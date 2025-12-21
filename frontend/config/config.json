@@ -9,11 +9,7 @@
     "languageCode": "",
     "proactiveAudio": false,
     "audio": {
-      "inputSampleRate": 16000,
-      "outputSampleRate": 24000,
-      "bufferSize": 4096,
-      "channels": 1,
-      "format": "audio/pcm"
+      "outputSampleRate": 24000
     },
     "thinkingConfig": {
       "enabled": false,
@@ -23,6 +19,13 @@
     "initialGreeting": {
       "enabled": true,
       "message": "På svenska:Säg hej, och fråga vad du kan hjälpa till med"
+    },
+    "vadConfig": {
+      "disabled": false,
+      "startOfSpeechSensitivity": "START_SENSITIVITY_MEDIUM",
+      "endOfSpeechSensitivity": "END_SENSITIVITY_MEDIUM",
+      "prefixPaddingMs": 20,
+      "silenceDurationMs": 100
     }
   },
   "ui": {

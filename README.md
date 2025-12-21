@@ -12,6 +12,7 @@ Questions like this are possible:
 
 
 Some todos:
+- help wht confuiguration
 - more on UI
 - more extensible (upload of docs for AI to use)
 - more documentation in particular around configuration

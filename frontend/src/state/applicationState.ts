@@ -17,7 +17,7 @@ export interface ApplicationState {
   inputAudioContext: AudioContext | null;
   outputAudioContext: AudioContext | null;
   stream: MediaStream | null;
-  processor: ScriptProcessorNode | null;
+  processor: AudioWorkletNode | null;
   sourceNode: MediaStreamAudioSourceNode | null;
 
   // Gemini session

@@ -4,6 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TiddeliHome</title>
+    
+    <!-- Favicons -->
+    <link rel="icon" type="image/x-icon" href="/icons/favicon.ico">
+    <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16x16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png">
+    
+    <!-- Web App Manifest -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#2A2A2A">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="TiddeliHome">
 </head>
 <body class="phone-ui-container">
     <!-- Overlay for settings panel -->
@@ -26,9 +40,223 @@
         <!-- Gemini Tab Content -->
         <div class="settings-tab-content active" id="gemini-tab">
             <div class="mb-6">
+                <label class="block text-gray-900 text-sm mb-2 text-left font-medium" for="gemini-api-key">
+                    API Key <span class="text-red-500">*</span>:
+                </label>
+                <input 
+                    type="password"
+                    id="gemini-api-key" 
+                    class="settings-input w-full p-3 border border-gray-300 rounded bg-white text-gray-900 text-sm box-border transition-colors duration-200 focus:outline-none focus:border-blue-500" 
+                    placeholder="Enter your Gemini API key"
+                />
                 <p class="text-xs text-gray-600 mt-2 text-left leading-relaxed">
-                    Gemini AI configuration settings will be available here.
+                    Required. Get your API key from <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-blue-500 hover:underline">Google AI Studio</a>
                 </p>
+            </div>
+
+            <div class="mb-6">
+                <label class="block text-gray-900 text-sm mb-2 text-left font-medium" for="gemini-model">
+                    Model:
+                </label>
+                <input 
+                    type="text"
+                    id="gemini-model" 
+                    class="settings-input w-full p-3 border border-gray-300 rounded bg-white text-gray-900 text-sm box-border transition-colors duration-200 focus:outline-none focus:border-blue-500" 
+                    placeholder="gemini-2.5-flash-native-audio-preview-09-2025"
+                />
+                <p class="text-xs text-gray-600 mt-2 text-left leading-relaxed">
+                    Gemini model name for audio interactions
+                </p>
+            </div>
+
+            <div class="mb-6">
+                <label class="block text-gray-900 text-sm mb-2 text-left font-medium" for="gemini-voice-name">
+                    Voice Name:
+                </label>
+                <input 
+                    type="text"
+                    id="gemini-voice-name" 
+                    class="settings-input w-full p-3 border border-gray-300 rounded bg-white text-gray-900 text-sm box-border transition-colors duration-200 focus:outline-none focus:border-blue-500" 
+                    placeholder="e.g., Aoede, Charon, Fenrir"
+                />
+                <p class="text-xs text-gray-600 mt-2 text-left leading-relaxed">
+                    Voice name for the AI (optional, leave empty for default)
+                </p>
+            </div>
+
+            <div class="mb-6">
+                <label class="block text-gray-900 text-sm mb-2 text-left font-medium" for="gemini-language-code">
+                    Language Code:
+                </label>
+                <input 
+                    type="text"
+                    id="gemini-language-code" 
+                    class="settings-input w-full p-3 border border-gray-300 rounded bg-white text-gray-900 text-sm box-border transition-colors duration-200 focus:outline-none focus:border-blue-500" 
+                    placeholder="e.g., sv-SE, en-US"
+                />
+                <p class="text-xs text-gray-600 mt-2 text-left leading-relaxed">
+                    Language code for AI responses (optional, leave empty for default)
+                </p>
+            </div>
+
+            <div class="mb-6">
+                <label class="flex items-center text-gray-900 text-sm mb-2 cursor-pointer">
+                    <input type="checkbox" id="gemini-enable-grounding" class="mr-2 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500" />
+                    Enable Grounding
+                </label>
+                <p class="text-xs text-gray-600 mt-1 text-left leading-relaxed ml-6">
+                    Enable Google Grounding for fact-checked responses
+                </p>
+            </div>
+
+            <div class="mb-6">
+                <label class="flex items-center text-gray-900 text-sm mb-2 cursor-pointer">
+                    <input type="checkbox" id="gemini-enable-affective-dialog" class="mr-2 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500" />
+                    Enable Affective Dialog
+                </label>
+                <p class="text-xs text-gray-600 mt-1 text-left leading-relaxed ml-6">
+                    Enable emotional tone adaptation in responses
+                </p>
+            </div>
+
+            <div class="mb-6">
+                <label class="flex items-center text-gray-900 text-sm mb-2 cursor-pointer">
+                    <input type="checkbox" id="gemini-proactive-audio" class="mr-2 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500" />
+                    Proactive Audio
+                </label>
+                <p class="text-xs text-gray-600 mt-1 text-left leading-relaxed ml-6">
+                    Allow AI to initiate audio without user prompt
+                </p>
+            </div>
+
+            <div class="mb-6 border-t border-gray-300 pt-4">
+                <h3 class="text-gray-900 text-base font-medium mb-3">Thinking Configuration</h3>
+                <div class="mb-4">
+                    <label class="flex items-center text-gray-900 text-sm mb-2 cursor-pointer">
+                        <input type="checkbox" id="gemini-thinking-enabled" class="mr-2 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500" />
+                        Enable Thinking
+                    </label>
+                    <p class="text-xs text-gray-600 mt-1 text-left leading-relaxed ml-6">
+                        Show AI reasoning process
+                    </p>
+                </div>
+                <div class="mb-4 ml-6">
+                    <label class="block text-gray-900 text-sm mb-2 text-left font-medium" for="gemini-thinking-budget">
+                        Thinking Budget:
+                    </label>
+                    <input 
+                        type="number"
+                        id="gemini-thinking-budget" 
+                        class="settings-input w-full p-3 border border-gray-300 rounded bg-white text-gray-900 text-sm box-border transition-colors duration-200 focus:outline-none focus:border-blue-500" 
+                        placeholder="Leave empty for dynamic thinking"
+                    />
+                    <p class="text-xs text-gray-600 mt-2 text-left leading-relaxed">
+                        Maximum tokens for thinking (optional, leave empty for Google's dynamic thinking)
+                    </p>
+                </div>
+            </div>
+
+            <div class="mb-6 border-t border-gray-300 pt-4">
+                <h3 class="text-gray-900 text-base font-medium mb-3">Initial Greeting</h3>
+                <div class="mb-4">
+                    <label class="flex items-center text-gray-900 text-sm mb-2 cursor-pointer">
+                        <input type="checkbox" id="gemini-initial-greeting-enabled" class="mr-2 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500" />
+                        Enable Initial Greeting
+                    </label>
+                </div>
+                <div class="mb-4 ml-6">
+                    <label class="block text-gray-900 text-sm mb-2 text-left font-medium" for="gemini-initial-greeting-message">
+                        Greeting Message:
+                    </label>
+                    <textarea 
+                        id="gemini-initial-greeting-message" 
+                        class="settings-textarea w-full min-h-[100px]" 
+                        placeholder="Enter initial greeting message..."
+                    ></textarea>
+                    <p class="text-xs text-gray-600 mt-2 text-left leading-relaxed">
+                        Message to play when connection is established
+                    </p>
+                </div>
+            </div>
+
+            <div class="mb-6 border-t border-gray-300 pt-4">
+                <h3 class="text-gray-900 text-base font-medium mb-3">Voice Activity Detection (VAD)</h3>
+                <p class="text-xs text-gray-600 mb-4 text-left leading-relaxed">
+                    Controls how the system detects when you start and stop speaking
+                </p>
+                
+                <div class="mb-4">
+                    <label class="flex items-center text-gray-900 text-sm mb-2 cursor-pointer">
+                        <input type="checkbox" id="gemini-vad-disabled" class="mr-2 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500" />
+                        Disable Automatic VAD
+                    </label>
+                    <p class="text-xs text-gray-600 mt-1 text-left leading-relaxed ml-6">
+                        When disabled, manual control is required for speech detection
+                    </p>
+                </div>
+
+                <div class="mb-4 ml-6">
+                    <label class="block text-gray-900 text-sm mb-2 text-left font-medium" for="gemini-vad-start-sensitivity">
+                        Start of Speech Sensitivity:
+                    </label>
+                    <select id="gemini-vad-start-sensitivity" class="settings-input w-full">
+                        <option value="START_SENSITIVITY_LOW">Low - Requires clear, sustained speech (better for noisy environments)</option>
+                        <option value="START_SENSITIVITY_MEDIUM" selected>Medium - Balanced detection (default)</option>
+                        <option value="START_SENSITIVITY_HIGH">High - Detects even slight sounds (better for quiet environments)</option>
+                    </select>
+                </div>
+
+                <div class="mb-4 ml-6">
+                    <label class="block text-gray-900 text-sm mb-2 text-left font-medium" for="gemini-vad-end-sensitivity">
+                        End of Speech Sensitivity:
+                    </label>
+                    <select id="gemini-vad-end-sensitivity" class="settings-input w-full">
+                        <option value="END_SENSITIVITY_LOW">Low - Requires longer silence to end speech</option>
+                        <option value="END_SENSITIVITY_MEDIUM" selected>Medium - Balanced detection (default)</option>
+                        <option value="END_SENSITIVITY_HIGH">High - Detects end with minimal silence (faster, may cut off speech)</option>
+                    </select>
+                </div>
+
+                <div class="mb-4 ml-6">
+                    <label class="block text-gray-900 text-sm mb-2 text-left font-medium" for="gemini-vad-prefix-padding">
+                        Prefix Padding (ms):
+                    </label>
+                    <input 
+                        type="number"
+                        id="gemini-vad-prefix-padding" 
+                        class="settings-input w-full" 
+                        placeholder="20"
+                        min="0"
+                        max="1000"
+                    />
+                    <p class="text-xs text-gray-600 mt-2 text-left leading-relaxed">
+                        Audio to include before detected speech starts (prevents truncation). Default: 20ms
+                    </p>
+                </div>
+
+                <div class="mb-4 ml-6">
+                    <label class="block text-gray-900 text-sm mb-2 text-left font-medium" for="gemini-vad-silence-duration">
+                        Silence Duration (ms):
+                    </label>
+                    <input 
+                        type="number"
+                        id="gemini-vad-silence-duration" 
+                        class="settings-input w-full" 
+                        placeholder="100"
+                        min="0"
+                        max="5000"
+                    />
+                    <p class="text-xs text-gray-600 mt-2 text-left leading-relaxed">
+                        Duration of silence required to consider speech ended. Default: 100ms
+                    </p>
+                </div>
+            </div>
+
+            <div class="mb-6">
+                <button id="save-gemini-config-btn" class="btn-primary btn-blue w-full">
+                    💾 Save Gemini Configuration
+                </button>
+                <div id="gemini-config-status" class="text-sm text-gray-600 mt-2 min-h-[1.2rem]"></div>
             </div>
         </div>
         

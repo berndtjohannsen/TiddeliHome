@@ -21,11 +21,7 @@ export interface AppConfig {
     languageCode?: string;
     proactiveAudio?: boolean;
     audio?: {
-      inputSampleRate: number;
       outputSampleRate: number;
-      bufferSize: number;
-      channels: number;
-      format: string;
     };
     thinkingConfig?: {
       enabled?: boolean;
@@ -36,14 +32,17 @@ export interface AppConfig {
       enabled?: boolean;
       message?: string;
     };
+    vadConfig?: {
+      disabled?: boolean;
+      startOfSpeechSensitivity?: string;
+      endOfSpeechSensitivity?: string;
+      prefixPaddingMs?: number;
+      silenceDurationMs?: number;
+    };
   };
   // Backward compatibility: expose audio at top level (computed from gemini.audio)
   audio: {
-    inputSampleRate: number;
     outputSampleRate: number;
-    bufferSize: number;
-    channels: number;
-    format: string;
   };
   ui?: {
     feedbackDuration?: number;
@@ -211,30 +210,18 @@ export function loadConfig(): AppConfig {
     // Try new structure first (gemini.audio)
     if (userConfig?.gemini?.audio || configData.gemini?.audio) {
       return userConfig?.gemini?.audio || configData.gemini?.audio || {
-        inputSampleRate: 16000,
-        outputSampleRate: 24000,
-        bufferSize: 4096,
-        channels: 1,
-        format: 'audio/pcm'
+        outputSampleRate: 24000
       };
     }
     // Fall back to old structure for backward compatibility
     if (userConfig?.audio || configData.audio) {
       return userConfig?.audio || configData.audio || {
-        inputSampleRate: 16000,
-        outputSampleRate: 24000,
-        bufferSize: 4096,
-        channels: 1,
-        format: 'audio/pcm'
+        outputSampleRate: 24000
       };
     }
     // Default fallback
     return {
-      inputSampleRate: 16000,
-      outputSampleRate: 24000,
-      bufferSize: 4096,
-      channels: 1,
-      format: 'audio/pcm'
+      outputSampleRate: 24000
     };
   };
   
@@ -273,6 +260,13 @@ export function loadConfig(): AppConfig {
       initialGreeting: userConfig?.gemini?.initialGreeting || configData.gemini.initialGreeting || {
         enabled: false,
         message: ''
+      },
+      vadConfig: userConfig?.gemini?.vadConfig || configData.gemini.vadConfig || {
+        disabled: false,
+        startOfSpeechSensitivity: 'START_SENSITIVITY_MEDIUM',
+        endOfSpeechSensitivity: 'END_SENSITIVITY_MEDIUM',
+        prefixPaddingMs: 20,
+        silenceDurationMs: 100
       },
     },
     // Backward compatibility: expose audio at top level

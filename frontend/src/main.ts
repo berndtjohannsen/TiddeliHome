@@ -1,5 +1,5 @@
 import './styles.css';
-import { GoogleGenAI, Modality } from '@google/genai';
+import { GoogleGenAI, Modality, StartSensitivity, EndSensitivity } from '@google/genai';
 import { pcmToGeminiBlob } from './utils/audioUtils';
 import { buildSystemInstruction as buildSystemInstructionUtil, buildTools as buildToolsUtil } from './utils/geminiConfigBuilder';
 import { executeHAServiceCall as executeHAServiceCallApi, getHAEntityState as getHAEntityStateApi } from './api/haRestApi';
@@ -11,9 +11,10 @@ import { updateUIState, copyToClipboard, updateMuteState } from './utils/uiHelpe
 import { createMessageHandler, MessageHandlerContext } from './handlers/messageHandler';
 import { TimeoutManager } from './timeout/timeoutManager';
 import { ApplicationState, createInitialState } from './state/applicationState';
+import { saveConfigToStorage, loadConfigFromStorage } from './utils/configManager';
 
-// Load configuration
-const config = loadConfig();
+// Load configuration (can be reloaded after UI changes)
+let config = loadConfig();
 
 // Debug: Log the final config to verify it's loaded correctly
 console.log('Final loaded config:', {
@@ -67,7 +68,7 @@ console.log('Final loaded config:', {
 
 
 // Audio constants
-const INPUT_SAMPLE_RATE = config.audio.inputSampleRate;
+const INPUT_SAMPLE_RATE = 48000; // Default browser sample rate (used as fallback only - actual rate comes from AudioContext)
 const OUTPUT_SAMPLE_RATE = config.audio.outputSampleRate;
 
 // Application state
@@ -215,6 +216,7 @@ function switchTab(tabName: 'gemini' | 'homeassistant' | 'docs' | 'debug') {
   // Show selected tab
   if (tabName === 'gemini' && geminiTab) {
     geminiTab.classList.add('active');
+    loadGeminiConfig(); // Load config when tab is shown
   } else if (tabName === 'homeassistant' && homeAssistantTab) {
     homeAssistantTab.classList.add('active');
   } else if (tabName === 'docs' && docsTab) {
@@ -496,6 +498,48 @@ async function connectToGemini() {
       connectConfig.thinkingConfig = thinkingConfig;
     }
     
+    // Add VAD (Voice Activity Detection) config
+    if (config.gemini.vadConfig) {
+      const vadConfig: any = {};
+      
+      // Map sensitivity strings to enum values
+      const startSensitivityMap: Record<string, any> = {
+        'START_SENSITIVITY_LOW': StartSensitivity.START_SENSITIVITY_LOW,
+        'START_SENSITIVITY_MEDIUM': StartSensitivity.START_SENSITIVITY_MEDIUM,
+        'START_SENSITIVITY_HIGH': StartSensitivity.START_SENSITIVITY_HIGH,
+      };
+      
+      const endSensitivityMap: Record<string, any> = {
+        'END_SENSITIVITY_LOW': EndSensitivity.END_SENSITIVITY_LOW,
+        'END_SENSITIVITY_MEDIUM': EndSensitivity.END_SENSITIVITY_MEDIUM,
+        'END_SENSITIVITY_HIGH': EndSensitivity.END_SENSITIVITY_HIGH,
+      };
+      
+      if (config.gemini.vadConfig.disabled !== undefined) {
+        vadConfig.disabled = config.gemini.vadConfig.disabled;
+      }
+      
+      if (config.gemini.vadConfig.startOfSpeechSensitivity) {
+        vadConfig.startOfSpeechSensitivity = startSensitivityMap[config.gemini.vadConfig.startOfSpeechSensitivity] || StartSensitivity.START_SENSITIVITY_MEDIUM;
+      }
+      
+      if (config.gemini.vadConfig.endOfSpeechSensitivity) {
+        vadConfig.endOfSpeechSensitivity = endSensitivityMap[config.gemini.vadConfig.endOfSpeechSensitivity] || EndSensitivity.END_SENSITIVITY_MEDIUM;
+      }
+      
+      if (config.gemini.vadConfig.prefixPaddingMs !== undefined) {
+        vadConfig.prefixPaddingMs = config.gemini.vadConfig.prefixPaddingMs;
+      }
+      
+      if (config.gemini.vadConfig.silenceDurationMs !== undefined) {
+        vadConfig.silenceDurationMs = config.gemini.vadConfig.silenceDurationMs;
+      }
+      
+      connectConfig.realtimeInputConfig = {
+        automaticActivityDetection: vadConfig
+      };
+    }
+    
     // Create session ref for message handler (will be updated in onopen)
     const sessionRef = { value: null as any };
     
@@ -560,31 +604,37 @@ async function connectToGemini() {
               return;
             }
 
-            // Setup Input Stream
+            // Setup Input Stream using AudioWorklet (replaces deprecated ScriptProcessorNode)
             try {
+              // Load AudioWorklet module
+              await appState.inputAudioContext.audioWorklet.addModule('/audio-processor.js');
+              
               appState.sourceNode = appState.inputAudioContext.createMediaStreamSource(appState.stream);
-              appState.processor = appState.inputAudioContext.createScriptProcessor(config.audio.bufferSize, 1, 1);
+              appState.processor = new AudioWorkletNode(appState.inputAudioContext, 'audio-processor');
 
-              appState.processor.onaudioprocess = (e: AudioProcessingEvent) => {
+              // Handle messages from the AudioWorklet processor
+              appState.processor.port.onmessage = (e: MessageEvent) => {
                 // Only send if still connected, session exists, and microphone is not muted
                 if (!appState.isConnected || !appState.session || appState.isMicMuted) return;
                 
-                try {
-                  const inputData = e.inputBuffer.getChannelData(0);
-                  // Use the actual AudioContext sample rate (browser may use different than requested)
-                  const actualSampleRate = appState.inputAudioContext?.sampleRate || INPUT_SAMPLE_RATE;
-                  const blob = pcmToGeminiBlob(inputData, actualSampleRate);
-                  appState.session.sendRealtimeInput({ media: blob });
-                } catch (error) {
-                  // Silently ignore errors if connection is closing/closed
-                  if (error instanceof Error && !error.message.includes('CLOSING') && !error.message.includes('CLOSED')) {
-                    console.error('Error sending audio:', error);
+                if (e.data.type === 'audioData') {
+                  try {
+                    const inputData = e.data.data as Float32Array;
+                    // Use the actual AudioContext sample rate (browser may use different than requested)
+                    const actualSampleRate = appState.inputAudioContext?.sampleRate || INPUT_SAMPLE_RATE;
+                    const blob = pcmToGeminiBlob(inputData, actualSampleRate);
+                    appState.session.sendRealtimeInput({ media: blob });
+                  } catch (error) {
+                    // Silently ignore errors if connection is closing/closed
+                    if (error instanceof Error && !error.message.includes('CLOSING') && !error.message.includes('CLOSED')) {
+                      console.error('Error sending audio:', error);
+                    }
                   }
                 }
               };
 
               // Connect audio nodes: source -> processor -> gainNode (at 0 volume) -> destination
-              // ScriptProcessorNode must be connected to process audio, but we don't want to hear our own input
+              // AudioWorkletNode must be connected to process audio, but we don't want to hear our own input
               // So we use a GainNode set to 0 to prevent feedback while still processing the audio
               const gainNode = appState.inputAudioContext.createGain();
               gainNode.gain.value = 0; // Mute to prevent feedback
@@ -719,6 +769,10 @@ function disconnect() {
     try {
       appState.sourceNode.disconnect();
       appState.processor.disconnect();
+      // Close the AudioWorkletNode port if it exists
+      if (appState.processor.port) {
+        appState.processor.port.close();
+      }
     } catch (e) {
       // Ignore errors during disconnect
     }
@@ -817,6 +871,177 @@ if (haConfigInput) {
     updateHAConfig();
   });
 }
+
+// Gemini configuration UI
+const geminiApiKeyInput = document.getElementById('gemini-api-key') as HTMLInputElement | null;
+const geminiModelInput = document.getElementById('gemini-model') as HTMLInputElement | null;
+const geminiVoiceNameInput = document.getElementById('gemini-voice-name') as HTMLInputElement | null;
+const geminiLanguageCodeInput = document.getElementById('gemini-language-code') as HTMLInputElement | null;
+const geminiEnableGroundingCheckbox = document.getElementById('gemini-enable-grounding') as HTMLInputElement | null;
+const geminiEnableAffectiveDialogCheckbox = document.getElementById('gemini-enable-affective-dialog') as HTMLInputElement | null;
+const geminiProactiveAudioCheckbox = document.getElementById('gemini-proactive-audio') as HTMLInputElement | null;
+const geminiThinkingEnabledCheckbox = document.getElementById('gemini-thinking-enabled') as HTMLInputElement | null;
+const geminiThinkingBudgetInput = document.getElementById('gemini-thinking-budget') as HTMLInputElement | null;
+const geminiInitialGreetingEnabledCheckbox = document.getElementById('gemini-initial-greeting-enabled') as HTMLInputElement | null;
+const geminiInitialGreetingMessageTextarea = document.getElementById('gemini-initial-greeting-message') as HTMLTextAreaElement | null;
+const geminiVadDisabledCheckbox = document.getElementById('gemini-vad-disabled') as HTMLInputElement | null;
+const geminiVadStartSensitivitySelect = document.getElementById('gemini-vad-start-sensitivity') as HTMLSelectElement | null;
+const geminiVadEndSensitivitySelect = document.getElementById('gemini-vad-end-sensitivity') as HTMLSelectElement | null;
+const geminiVadPrefixPaddingInput = document.getElementById('gemini-vad-prefix-padding') as HTMLInputElement | null;
+const geminiVadSilenceDurationInput = document.getElementById('gemini-vad-silence-duration') as HTMLInputElement | null;
+const saveGeminiConfigBtn = document.getElementById('save-gemini-config-btn') as HTMLButtonElement | null;
+const geminiConfigStatus = document.getElementById('gemini-config-status') as HTMLDivElement | null;
+
+/**
+ * Load Gemini configuration from localStorage and populate form fields
+ * Uses config.json defaults when no saved config exists
+ */
+function loadGeminiConfig() {
+  const userConfig = loadConfigFromStorage();
+  const geminiConfig = userConfig?.gemini;
+  
+  // Use defaults from config.json when no saved config exists
+  const defaults = config.gemini;
+  
+  // Populate form fields - use saved config if available, otherwise use defaults
+  if (geminiApiKeyInput) {
+    geminiApiKeyInput.value = geminiConfig?.apiKey || defaults.apiKey || '';
+  }
+  if (geminiModelInput) {
+    geminiModelInput.value = geminiConfig?.model || defaults.model || '';
+  }
+  if (geminiVoiceNameInput) {
+    geminiVoiceNameInput.value = geminiConfig?.voiceName || defaults.voiceName || '';
+  }
+  if (geminiLanguageCodeInput) {
+    geminiLanguageCodeInput.value = geminiConfig?.languageCode || defaults.languageCode || '';
+  }
+  if (geminiEnableGroundingCheckbox) {
+    geminiEnableGroundingCheckbox.checked = geminiConfig?.enableGrounding ?? defaults.enableGrounding ?? false;
+  }
+  if (geminiEnableAffectiveDialogCheckbox) {
+    geminiEnableAffectiveDialogCheckbox.checked = geminiConfig?.enableAffectiveDialog ?? defaults.enableAffectiveDialog ?? false;
+  }
+  if (geminiProactiveAudioCheckbox) {
+    geminiProactiveAudioCheckbox.checked = geminiConfig?.proactiveAudio ?? defaults.proactiveAudio ?? false;
+  }
+  
+  // Thinking config
+  if (geminiThinkingEnabledCheckbox) {
+    geminiThinkingEnabledCheckbox.checked = geminiConfig?.thinkingConfig?.enabled ?? defaults.thinkingConfig?.enabled ?? false;
+  }
+  if (geminiThinkingBudgetInput) {
+    const budget = geminiConfig?.thinkingConfig?.thinkingBudget ?? defaults.thinkingConfig?.thinkingBudget;
+    geminiThinkingBudgetInput.value = budget !== null && budget !== undefined ? budget.toString() : '';
+  }
+  
+  // Initial greeting
+  if (geminiInitialGreetingEnabledCheckbox) {
+    geminiInitialGreetingEnabledCheckbox.checked = geminiConfig?.initialGreeting?.enabled ?? defaults.initialGreeting?.enabled ?? false;
+  }
+  if (geminiInitialGreetingMessageTextarea) {
+    geminiInitialGreetingMessageTextarea.value = geminiConfig?.initialGreeting?.message || defaults.initialGreeting?.message || '';
+  }
+  
+  // VAD config
+  const vadDefaults = defaults.vadConfig || {
+    disabled: false,
+    startOfSpeechSensitivity: 'START_SENSITIVITY_MEDIUM',
+    endOfSpeechSensitivity: 'END_SENSITIVITY_MEDIUM',
+    prefixPaddingMs: 20,
+    silenceDurationMs: 100
+  };
+  
+  if (geminiVadDisabledCheckbox) {
+    geminiVadDisabledCheckbox.checked = geminiConfig?.vadConfig?.disabled ?? vadDefaults.disabled ?? false;
+  }
+  if (geminiVadStartSensitivitySelect) {
+    geminiVadStartSensitivitySelect.value = geminiConfig?.vadConfig?.startOfSpeechSensitivity || vadDefaults.startOfSpeechSensitivity || 'START_SENSITIVITY_MEDIUM';
+  }
+  if (geminiVadEndSensitivitySelect) {
+    geminiVadEndSensitivitySelect.value = geminiConfig?.vadConfig?.endOfSpeechSensitivity || vadDefaults.endOfSpeechSensitivity || 'END_SENSITIVITY_MEDIUM';
+  }
+  if (geminiVadPrefixPaddingInput) {
+    geminiVadPrefixPaddingInput.value = (geminiConfig?.vadConfig?.prefixPaddingMs ?? vadDefaults.prefixPaddingMs ?? 20).toString();
+  }
+  if (geminiVadSilenceDurationInput) {
+    geminiVadSilenceDurationInput.value = (geminiConfig?.vadConfig?.silenceDurationMs ?? vadDefaults.silenceDurationMs ?? 100).toString();
+  }
+}
+
+/**
+ * Save Gemini configuration to localStorage
+ */
+function saveGeminiConfig() {
+  if (!geminiConfigStatus) return;
+  
+  try {
+    // Collect values from form
+    const geminiConfig: any = {
+      apiKey: geminiApiKeyInput?.value.trim() || '',
+      model: geminiModelInput?.value.trim() || config.gemini.model || '',
+      voiceName: geminiVoiceNameInput?.value.trim() || '',
+      languageCode: geminiLanguageCodeInput?.value.trim() || '',
+      enableGrounding: geminiEnableGroundingCheckbox?.checked ?? false,
+      enableAffectiveDialog: geminiEnableAffectiveDialogCheckbox?.checked ?? false,
+      proactiveAudio: geminiProactiveAudioCheckbox?.checked ?? false,
+      thinkingConfig: {
+        enabled: geminiThinkingEnabledCheckbox?.checked ?? false,
+        thinkingBudget: geminiThinkingBudgetInput?.value.trim() ? parseInt(geminiThinkingBudgetInput.value.trim(), 10) : null,
+      },
+      initialGreeting: {
+        enabled: geminiInitialGreetingEnabledCheckbox?.checked ?? false,
+        message: geminiInitialGreetingMessageTextarea?.value.trim() || '',
+      },
+      vadConfig: {
+        disabled: geminiVadDisabledCheckbox?.checked ?? false,
+        startOfSpeechSensitivity: geminiVadStartSensitivitySelect?.value || 'START_SENSITIVITY_MEDIUM',
+        endOfSpeechSensitivity: geminiVadEndSensitivitySelect?.value || 'END_SENSITIVITY_MEDIUM',
+        prefixPaddingMs: geminiVadPrefixPaddingInput?.value.trim() ? parseInt(geminiVadPrefixPaddingInput.value.trim(), 10) : 20,
+        silenceDurationMs: geminiVadSilenceDurationInput?.value.trim() ? parseInt(geminiVadSilenceDurationInput.value.trim(), 10) : 100,
+      }
+    };
+    
+    // Validate API key
+    if (!geminiConfig.apiKey) {
+      geminiConfigStatus.textContent = '⚠️ API Key is required';
+      geminiConfigStatus.className = 'text-sm text-orange-600 mt-2 min-h-[1.2rem]';
+      return;
+    }
+    
+    // Save to localStorage
+    saveConfigToStorage({ gemini: geminiConfig });
+    
+    // Reload config to apply changes immediately
+    config = loadConfig();
+    
+    // Show success message
+    geminiConfigStatus.textContent = '✅ Configuration saved successfully';
+    geminiConfigStatus.className = 'text-sm text-green-600 mt-2 min-h-[1.2rem]';
+    
+    // Clear success message after 3 seconds
+    setTimeout(() => {
+      if (geminiConfigStatus) {
+        geminiConfigStatus.textContent = '';
+        geminiConfigStatus.className = 'text-sm text-gray-600 mt-2 min-h-[1.2rem]';
+      }
+    }, 3000);
+    
+  } catch (error) {
+    console.error('Error saving Gemini configuration:', error);
+    geminiConfigStatus.textContent = '❌ Error saving configuration';
+    geminiConfigStatus.className = 'text-sm text-red-600 mt-2 min-h-[1.2rem]';
+  }
+}
+
+// Initialize Gemini config UI
+if (saveGeminiConfigBtn) {
+  saveGeminiConfigBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    saveGeminiConfig();
+  });
+}
+
 if (extractHaConfigBtn) {
   extractHaConfigBtn.addEventListener('click', (e) => {
     e.stopPropagation(); // Prevent overlay click handler from firing
