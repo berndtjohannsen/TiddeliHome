@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TiddeliHome</title>
+</head>
+<body class="phone-ui-container">
+    <!-- Overlay for settings panel -->
+    <div class="settings-overlay fixed top-0 left-0 right-0 bottom-0 bg-black/50 z-[999] opacity-0 invisible" id="settings-overlay"></div>
+    
+    <!-- Settings Panel -->
+    <div class="settings-panel fixed top-0 w-full max-w-[400px] h-screen bg-white shadow-[-4px_0_20px_rgba(0,0,0,0.2),-2px_0_10px_rgba(0,0,0,0.14)] z-[1000] flex flex-col overflow-hidden" id="settings-panel">
+        <div class="flex justify-between items-center p-4 border-b border-gray-300 bg-white">
+            <h2 class="text-gray-900 text-xl font-medium">Settings</h2>
+            <button class="settings-close-btn" id="settings-close-btn" aria-label="Close settings">✕</button>
+        </div>
+        
+        <div class="flex border-b border-gray-300 bg-white">
+            <button class="settings-tab" data-tab="gemini">Gemini</button>
+            <button class="settings-tab" data-tab="homeassistant">Home Assistant</button>
+            <button class="settings-tab" data-tab="docs">Docs</button>
+            <button class="settings-tab" data-tab="debug">Debug</button>
+        </div>
+        
+        <!-- Gemini Tab Content -->
+        <div class="settings-tab-content active" id="gemini-tab">
+            <div class="mb-6">
+                <p class="text-xs text-gray-600 mt-2 text-left leading-relaxed">
+                    Gemini AI configuration settings will be available here.
+                </p>
+            </div>
+        </div>
+        
+        <!-- Home Assistant Tab Content -->
+        <div class="settings-tab-content" id="homeassistant-tab">
+            <div class="mb-6">
+                <button class="btn-primary btn-green mb-4 w-full" id="extract-ha-config-btn">
+                    🔄 Extract HA Config from Home Assistant
+                </button>
+                <div id="extract-status" class="text-sm text-gray-600 mt-2 min-h-[1.2rem]"></div>
+            </div>
+            
+            <div class="mb-6 js-hidden" id="ha-config-summary-section">
+                <label class="block text-gray-900 text-sm mb-2 text-left font-medium">Extracted Configuration Summary:</label>
+                <div id="ha-config-summary" class="ha-config-summary"></div>
+            </div>
+        </div>
+        
+        <!-- Docs Tab Content -->
+        <div class="settings-tab-content" id="docs-tab">
+            <div class="mb-6">
+                <p class="text-xs text-gray-600 mt-2 text-left leading-relaxed">
+                    Document and reference source configuration will be available here.
+                </p>
+            </div>
+        </div>
+        
+        <!-- Debug Tab Content -->
+        <div class="settings-tab-content" id="debug-tab">
+            <div class="mb-6">
+                <div class="flex justify-between items-center mb-3">
+                    <label class="block text-gray-900 text-sm text-left font-medium" for="ai-function-calls">
+                        AI Function Calls (JSON):
+                    </label>
+                    <button id="copy-log-btn" class="btn-primary btn-blue py-2 px-4">
+                        📋 Copy
+                    </button>
+                </div>
+                <textarea 
+                    id="ai-function-calls" 
+                    class="settings-textarea" 
+                    placeholder='AI function calls will appear here when the AI tries to control Home Assistant...'
+                    readonly
+                ></textarea>
+                <p class="text-xs text-gray-600 mt-2 text-left leading-relaxed">
+                    This shows the function calls that the AI generates. These will be sent to Home Assistant REST API.
+                </p>
+            </div>
+            
+            <div class="mb-6">
+                <label class="block text-gray-900 text-sm mb-2 text-left font-medium" for="ha-config-input">
+                    Home Assistant Config (JSON):
+                </label>
+                <textarea 
+                    id="ha-config-input" 
+                    class="settings-textarea" 
+                    placeholder='Paste Home Assistant config JSON here (e.g., from /api/states endpoint)'
+                ></textarea>
+                <p class="text-xs text-gray-600 mt-2 text-left leading-relaxed">
+                    This config will be passed to the AI when connecting. Leave empty to connect without HA context.
+                </p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="text-center text-white w-full max-w-[600px] relative">
+        <button class="settings-icon-btn" id="settings-icon" aria-label="Open settings">⚙️</button>
+        <h1 class="text-4xl mb-8 font-normal text-white tracking-tight md:text-3xl">TiddeliHome</h1>
+        <button id="mic-button" class="mic-button" aria-label="Phone call"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" class="w-10 h-10 fill-black md:w-9 md:h-9"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg></button>
+        <button id="mute-button" class="mute-button min-w-12 h-12 w-12 rounded-full border-none bg-white/10 text-white cursor-pointer shadow-[0_2px_4px_rgba(0,0,0,0.3)] transition-all duration-200 items-center justify-center m-2 mx-auto mt-0 p-0 relative hover:bg-white/20 active:bg-white/15 md:w-11 md:h-11 md:min-w-11" aria-label="Mute microphone">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" class="mute-icon-svg w-8 h-8 fill-white md:w-7 md:h-7">
+                <!-- Microphone icon -->
+                <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
+                <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+            </svg>
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" class="mute-slash-svg w-8 h-8 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 md:w-7 md:h-7">
+                <!-- Slash line for mute -->
+                <line x1="1" y1="23" x2="23" y2="1" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round"/>
+            </svg>
+        </button>
+        <p id="status-text" class="text-sm mt-4 text-white/70 font-normal md:text-xs">Ready - Click to start call</p>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+</body>
+</html>

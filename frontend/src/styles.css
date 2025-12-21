@@ -1,0 +1,532 @@
+@import "tailwindcss";
+
+/* Custom Material Design colors for compatibility with existing styles */
+@theme {
+  --color-material-green: #4CAF50;
+  --color-material-red: #E57373;
+  --color-material-blue: #2196F3;
+  --color-material-grey: #757575;
+}
+
+/* Custom animations and complex styles that cannot be done with Tailwind utilities */
+@layer components {
+  /* Material pulse animation for connected state */
+  @keyframes materialPulse {
+    0%, 100% {
+      box-shadow: 0 6px 10px rgba(229, 115, 115, 0.2), 0 1px 18px rgba(229, 115, 115, 0.15), 0 3px 5px rgba(229, 115, 115, 0.25);
+    }
+    50% {
+      box-shadow: 0 8px 12px rgba(229, 115, 115, 0.3), 0 2px 22px rgba(229, 115, 115, 0.25), 0 4px 6px rgba(229, 115, 115, 0.35);
+    }
+  }
+
+  .material-pulse {
+    animation: materialPulse 2s infinite;
+  }
+
+  /* Handset rotation - horizontal when idle, rotated down when connected */
+  .mic-button svg {
+    display: block !important; /* Ensure SVG displays correctly */
+    margin: 0 !important; /* Remove any margins */
+    transform: rotate(0deg) !important; /* Horizontal orientation when idle (green button) */
+    transform-origin: center !important; /* Center rotation point */
+    transition: transform 0.2s cubic-bezier(0.4, 0.0, 0.2, 1);
+  }
+
+  .mic-button.connected svg {
+    transform: rotate(135deg) !important; /* Rotated down when connected (red button/hangup state) */
+  }
+
+  /* Mute button SVG styling */
+  .mute-icon-svg {
+    display: block !important;
+  }
+
+  .mute-slash-svg {
+    display: none;
+  }
+
+  .mute-button.muted .mute-slash-svg {
+    display: block;
+  }
+
+  /* Settings panel slide animation */
+  .settings-panel:not(.open) {
+    right: -100% !important; /* Hidden by default (off-screen to the right) */
+  }
+  
+  .settings-panel {
+    transition: right 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+  }
+
+  .settings-panel.open {
+    right: 0 !important; /* Slide in when open */
+  }
+
+  .settings-overlay {
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+    pointer-events: none !important; /* Don't block clicks when hidden */
+  }
+
+  .settings-overlay.visible {
+    opacity: 1 !important;
+    visibility: visible !important;
+    pointer-events: auto !important; /* Allow clicks when visible - but panel will be above */
+  }
+
+  /* Ensure settings panel and its children are always clickable above overlay */
+  .settings-panel {
+    pointer-events: auto !important;
+    isolation: isolate; /* Create new stacking context */
+  }
+  
+  .settings-panel * {
+    pointer-events: auto !important; /* Ensure all panel content is clickable */
+  }
+
+  /* Ensure settings button is always clickable above overlay */
+  #settings-icon {
+    z-index: 1000 !important; /* Higher than overlay (999) */
+    position: fixed !important;
+    pointer-events: auto !important;
+  }
+
+  /* Tab content visibility */
+  .settings-tab-content {
+    display: none; /* Hide all tabs by default */
+  }
+  
+  .settings-tab-content.active {
+    display: block; /* Show active tab */
+  }
+
+  /* Tab button active state */
+  .settings-tab.active {
+    color: #2196F3 !important; /* Material Blue 500 */
+    border-bottom-color: #2196F3 !important;
+  }
+
+  /* Mute button visibility - reserve space to prevent layout shift */
+  .mute-button {
+    display: flex !important; /* Always reserve space */
+    visibility: hidden; /* Hide visually when not visible */
+    opacity: 0; /* Make invisible */
+    pointer-events: none; /* Disable interactions when hidden */
+  }
+
+  .mute-button.visible {
+    visibility: visible !important; /* Show when visible */
+    opacity: 1 !important;
+    pointer-events: auto !important; /* Enable interactions when visible */
+  }
+
+  /* Mic button base state - green */
+  .mic-button {
+    width: 160px !important; /* w-40 = 10rem = 160px */
+    height: 80px !important; /* h-20 = 5rem = 80px */
+    display: flex !important; /* Ensure flexbox for centering */
+    align-items: center !important; /* Center vertically */
+    justify-content: center !important; /* Center horizontally */
+    margin-left: auto !important; /* Center horizontally */
+    margin-right: auto !important; /* Center horizontally */
+    margin-bottom: 3rem !important; /* Increased spacing to mute button (was 2rem/mb-8) */
+    font-size: 0 !important; /* Remove text rendering */
+    background: #4CAF50 !important; /* Material Green 500 */
+    border-radius: 40px !important; /* Oval shape - half of height */
+    box-sizing: border-box !important; /* Ensure consistent box model */
+    padding: 0 !important; /* Ensure no padding changes */
+    border: none !important; /* Ensure no border changes */
+    box-shadow: 0 6px 10px rgba(0,0,0,0.3), 0 1px 18px rgba(0,0,0,0.2), 0 3px 5px rgba(0,0,0,0.25) !important; /* Consistent shadow */
+    transition: background-color 0.2s ease, transform 0s !important; /* Only transition color, not layout - override transition-all */
+  }
+
+  @media (max-width: 768px) {
+    .mic-button {
+      width: 140px !important;
+      height: 70px !important;
+      border-radius: 35px !important; /* Half of height for oval */
+    }
+  }
+
+  /* Mic button connected state - red */
+  .mic-button.connected {
+    width: 160px !important; /* Same width as base state */
+    height: 80px !important; /* Same height as base state */
+    display: flex !important; /* Same display as base state */
+    align-items: center !important; /* Same alignment as base state */
+    justify-content: center !important; /* Same justification as base state */
+    margin-left: auto !important; /* Same margins as base state */
+    margin-right: auto !important;
+    margin-bottom: 3rem !important;
+    font-size: 0 !important; /* Same font-size as base state */
+    background: #E57373 !important; /* Coral/salmon-red for hangup button (Material Red 300) */
+    color: #000000;
+    border-radius: 40px !important; /* Maintain oval shape when connected */
+    box-sizing: border-box !important; /* Same box model as base state */
+    padding: 0 !important; /* Same padding as base state */
+    border: none !important; /* Same border as base state */
+    box-shadow: 0 6px 10px rgba(0,0,0,0.3), 0 1px 18px rgba(0,0,0,0.2), 0 3px 5px rgba(0,0,0,0.25) !important; /* Same shadow as base state - prevents jump */
+    transition: background-color 0.2s ease, transform 0s !important; /* Only transition color, not layout - override transition-all */
+  }
+
+  @media (max-width: 768px) {
+    .mic-button.connected {
+      width: 140px !important; /* Same width as base state */
+      height: 70px !important; /* Same height as base state */
+      border-radius: 35px !important;
+    }
+  }
+
+  .mic-button.connected.material-pulse {
+    animation: materialPulse 2s infinite;
+    /* Animation only affects box-shadow, not layout - so no jump */
+  }
+
+  .mic-button.muted {
+    animation: none;
+  }
+
+  /* Mute button muted state */
+  .mute-button.muted {
+    background: rgba(244, 67, 54, 0.8); /* Red with transparency when muted */
+  }
+
+  .mute-button.muted .mute-icon-svg,
+  .mute-button.muted .mute-icon-svg path {
+    fill: #FFFFFF;
+  }
+
+  /* Phone UI Container - body element styling */
+  .phone-ui-container {
+    font-family: 'Roboto', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Oxygen, Ubuntu, Cantarell, sans-serif;
+    background-color: #2A2A2A;
+    height: calc(100vh - 16px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 1.25rem;
+    position: relative;
+    overflow-x: hidden;
+    overflow-y: auto;
+    border-radius: 32px;
+    margin: 0.5rem;
+    max-width: calc(100vw - 16px);
+    box-sizing: border-box;
+  }
+
+  /* Button styles - extract repeated button patterns */
+  .btn-primary {
+    border: none;
+    color: white;
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.25rem;
+    cursor: pointer;
+    font-size: 0.875rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    transition: all 0.2s;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2), 0 1px 2px rgba(0,0,0,0.14);
+  }
+
+  .btn-primary:hover {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2), 0 2px 4px rgba(0,0,0,0.14);
+  }
+
+  .btn-primary:active {
+    box-shadow: 0 1px 2px rgba(0,0,0,0.2), 0 1px 1px rgba(0,0,0,0.14);
+  }
+
+  .btn-primary:disabled {
+    background-color: #6b7280;
+    opacity: 0.6;
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+
+  .btn-green {
+    background-color: #10b981; /* green-500 */
+  }
+
+  .btn-green:hover {
+    background-color: #047857; /* green-700 */
+  }
+
+  .btn-blue {
+    background-color: #3b82f6; /* blue-500 */
+  }
+
+  .btn-blue:hover {
+    background-color: #1d4ed8; /* blue-700 */
+  }
+
+  /* Settings panel components */
+  .settings-close-btn {
+    background: transparent;
+    border: none;
+    color: #4b5563; /* gray-600 */
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 9999px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    transition: all 0.2s;
+  }
+
+  .settings-close-btn:hover {
+    background-color: #f3f4f6; /* gray-100 */
+    color: #111827; /* gray-900 */
+  }
+
+  .settings-close-btn:active {
+    background-color: #e5e7eb; /* gray-200 */
+  }
+
+  .settings-tab {
+    flex: 1;
+    padding: 1rem;
+    background: transparent;
+    border: none;
+    color: #4b5563; /* gray-600 */
+    cursor: pointer;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: all 0.2s;
+    border-bottom: 2px solid transparent;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .settings-tab:hover {
+    color: #111827; /* gray-900 */
+    background-color: #f3f4f6; /* gray-100 */
+  }
+
+  .settings-tab-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1.5rem;
+  }
+
+  .settings-textarea {
+    width: 100%;
+    min-height: 200px;
+    padding: 0.75rem;
+    border: 1px solid #d1d5db; /* gray-300 */
+    border-radius: 0.25rem;
+    background-color: #f9fafb; /* gray-50 */
+    color: #111827; /* gray-900 */
+    font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+    font-size: 0.875rem;
+    resize: vertical;
+    box-sizing: border-box;
+    transition: border-color 0.2s;
+  }
+
+  .settings-textarea:focus {
+    outline: none;
+    border-color: #3b82f6; /* blue-500 */
+  }
+
+  .settings-textarea::placeholder {
+    color: #9ca3af; /* gray-400 */
+  }
+
+  .settings-icon-btn {
+    position: fixed !important;
+    top: 1rem;
+    right: 1rem;
+    background-color: rgba(255, 255, 255, 0.1);
+    color: white;
+    width: 3rem;
+    height: 3rem;
+    border-radius: 9999px;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    transition: all 0.2s;
+    z-index: 1000 !important; /* Higher than overlay (999) - must match #settings-icon rule */
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    pointer-events: auto !important; /* Ensure it's clickable above overlay */
+  }
+
+  .settings-icon-btn:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+  }
+
+  .settings-icon-btn:active {
+    background-color: rgba(255, 255, 255, 0.15);
+  }
+
+  @media (max-width: 768px) {
+    .settings-icon-btn {
+      top: 0.75rem;
+      right: 0.75rem;
+      width: 2.5rem;
+      height: 2.5rem;
+      font-size: 1.25rem;
+    }
+  }
+
+  /* HA Config Summary styles (for dynamically generated HTML) */
+  .ha-config-summary {
+    font-size: 0.875rem;
+    line-height: 1.6;
+    background-color: #f3f4f6; /* gray-100 */
+    border: 1px solid #d1d5db; /* gray-300 */
+    border-radius: 0.25rem;
+    padding: 1rem;
+    max-height: 300px;
+    overflow-y: auto;
+    color: #111827; /* gray-900 */
+  }
+
+  .ha-config-summary .summary-stats {
+    margin-bottom: 1.25rem;
+    padding-bottom: 0.875rem;
+    border-bottom: 2px solid #E0E0E0;
+  }
+
+  .ha-config-summary .summary-stats strong {
+    color: #1976D2; /* Material Blue 700 */
+    font-weight: 600;
+  }
+
+  .ha-config-summary h4 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #424242;
+    margin-top: 1.5rem;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #E0E0E0;
+  }
+
+  .ha-config-summary .area-group {
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background-color: #FAFAFA;
+    border: 1px solid #E0E0E0;
+    border-radius: 0.5rem;
+  }
+
+  .ha-config-summary .area-group:last-child {
+    margin-bottom: 0;
+  }
+
+  .ha-config-summary .area-group .area-name {
+    font-weight: 600;
+    font-size: 1rem;
+    color: #1976D2; /* Material Blue 700 */
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #BBDEFB; /* Light blue border */
+    text-transform: capitalize;
+  }
+
+  .ha-config-summary .area-group .entity-list {
+    margin-left: 0;
+    color: #424242;
+  }
+
+  .ha-config-summary .area-group .entity-item {
+    margin-bottom: 0.625rem;
+    padding: 0.5rem 0.75rem;
+    background-color: white;
+    border-left: 3px solid #2196F3; /* Material Blue 500 */
+    border-radius: 0.25rem;
+    transition: background-color 0.2s;
+  }
+
+  .ha-config-summary .area-group .entity-item:hover {
+    background-color: #F5F5F5;
+  }
+
+  .ha-config-summary .area-group .entity-item:last-child {
+    margin-bottom: 0;
+  }
+
+  .ha-config-summary .domain-badge {
+    display: inline-block;
+    background: #E3F2FD; /* Material Blue 50 */
+    color: #1976D2; /* Material Blue 700 */
+    padding: 0.25rem 0.625rem;
+    border-radius: 0.375rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-left: 0.5rem;
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+  }
+
+  .ha-config-summary .domain-hint {
+    color: #757575; /* Material Grey 600 */
+    font-size: 0.8125rem;
+    font-style: italic;
+    margin-left: 0.5rem;
+  }
+
+  .ha-config-summary .entity-state {
+    color: #1976D2; /* Material Blue 700 */
+    font-weight: 600;
+    margin-left: 0.5rem;
+    font-size: 0.8125rem;
+  }
+
+  /* Extract status states */
+  .settings-extract-status.loading {
+    color: #2196F3; /* Material Blue 500 */
+  }
+
+  .settings-extract-status.error {
+    color: #ff6b6b;
+  }
+
+  .settings-extract-status.success {
+    color: #51cf66;
+  }
+
+  /* Button feedback states for copy operations */
+  .button-feedback-success {
+    background-color: rgba(81, 207, 102, 0.3) !important;
+  }
+
+  .button-feedback-error {
+    background-color: rgba(255, 107, 107, 0.3) !important;
+  }
+
+  /* Utility classes for JavaScript-controlled visibility */
+  .js-hidden {
+    display: none !important;
+  }
+
+  .js-block {
+    display: block !important;
+  }
+}
+
+/* HTML and body base styles */
+@layer base {
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  html {
+    background: #FFFFFF; /* White background to show rounded corners */
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  body {
+    /* Phone UI styling is applied directly via Tailwind classes on body element */
+  }
+}

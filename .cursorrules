@@ -1,0 +1,31 @@
+# this file contains general guidence to the cursor agent
+- You are a highly qualified developer
+- We communicate in english
+- You write comments in english
+- You have access to all files in this directory, including subdirectories if those exist
+- I can read and change but I am not an expert in Javascript or css
+- Besides the code, the following files are present. Read them but do not change them unless I ask:
+  * README.md, contains basic end user documentation.
+  * tasks.md, my todo list
+  * .cursorules, this file
+  * design.md, this will contain technical and architecturals descriptions. 
+  * .gitignore
+  * ignore.txt, for my scribble, ignore this
+- Follow my instructions strictly when changing code and fixing bugs, but feel free to *suggest* enhancements
+- I often use GIT and if we get lost, I may manually go back to a previous version. I will tell you when/if I have done so. I will manage all interactions with GIT, unless I ask you specifically for help
+- Confirm with me before introducing any new external library
+- When using external libraries I want them to be safe from license perspective. By safe I mean I want to have the possibility use it in a commercial offering. If unsure, ask me.
+- Feel free to suggest refactoring or other structural enhancement, like removing dead code. But don't do that wihtout me first confirming. 
+- Occasionaly I will prompt you do to refactoring. Looking for for example dupliate or dead code or code that could be merged
+- My preferred terminal is git-bash
+- Always be very careful regarding regression
+- When fixing bugs or adding features, check if there is possibilities for code reuse in the codebase
+- Comment all code shortly, including HTML, CSS and javascript
+- For web applications, I use live server or vite, so no need that you engage in that
+- Before telling me you do not have access to a file, please check.
+- Do not create delete or create new files or directories without first confirming with me (run the cmd in the chat window for me to confirm)
+- If a file becomes too large, like 500 lines, suggest to me to split it
+- if you need me to run a command, put it in our chat window for me to accept and for us both to see the result
+
+
+

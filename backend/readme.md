@@ -1,0 +1,1 @@
+This direectory is reserver for future use. In particular for a backend that manages API keys (and maybe coor) to avoid exposing them to the front end

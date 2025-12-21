@@ -1,0 +1,59 @@
+{
+  "gemini": {
+    "model": "gemini-2.5-flash-native-audio-preview-09-2025",
+    "apiKey": "",
+    "systemInstruction": "",
+    "enableGrounding": true,
+    "enableAffectiveDialog": false,
+    "voiceName": "",
+    "languageCode": "",
+    "proactiveAudio": false,
+    "audio": {
+      "inputSampleRate": 16000,
+      "outputSampleRate": 24000,
+      "bufferSize": 4096,
+      "channels": 1,
+      "format": "audio/pcm"
+    },
+    "thinkingConfig": {
+      "enabled": false,
+      "thinkingBudget": null,
+      "includeThoughts": false
+    },
+    "initialGreeting": {
+      "enabled": true,
+      "message": "På svenska:Säg hej, och fråga vad du kan hjälpa till med"
+    }
+  },
+  "ui": {
+    "feedbackDuration": 2000,
+    "autoDisconnectDelay": 100,
+    "connectionMonitorRestoreDelay": 5000,
+    "noActionTimeout": 10000
+  },
+  "features": {
+    "homeAssistant": {
+      "enabled": true,
+      "baseUrl": "",
+      "accessToken": "",
+      "timeout": 30000,
+      "webSocketConnectionTimeout": 5000,
+      "functionCalling": {
+        "domains": ["light", "scene", "script"],
+        "serviceDataProperties": {
+          "brightness": {
+            "type": "number",
+            "description": "Brightness level for lights (0-255)"
+          },
+          "color_name": {
+            "type": "string",
+            "description": "Color name for lights (e.g., \"red\", \"blue\", \"warm\")"
+          }
+        },
+        "allowAnyDomain": false,
+        "allowAnyServiceData": true
+      }
+    }
+  }
+}
+
