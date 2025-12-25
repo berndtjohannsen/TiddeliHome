@@ -25,7 +25,6 @@ export async function fetchHAEntities(
   haToken: string,
   logToUI?: (message: string) => void,
   domains?: string[],
-  allowAnyDomain?: boolean,
   connectionTimeout?: number
 ): Promise<HAEntitiesResult> {
   return new Promise((resolve, reject) => {
@@ -98,8 +97,7 @@ export async function fetchHAEntities(
       const result: HAEntity[] = [];
       
       // Use provided domains from config, or fall back to default
-      // If allowAnyDomain is true, we don't filter by domain (but still respect labels)
-      const shouldFilterByDomain = !allowAnyDomain && domains && domains.length > 0;
+      // Domains list is mandatory - always filter by domain whitelist
       const includedDomains = domains && domains.length > 0 ? domains : ['scene', 'script', 'light'];
 
       statesData.forEach((state) => {
@@ -122,24 +120,16 @@ export async function fetchHAEntities(
           return; // Exclude this entity
         }
         
-        // Check if entity should be included
-        // If allowAnyDomain is true, include all domains (except those excluded by labels)
-        // Otherwise, filter by domain whitelist
+        // Check if entity should be included - always filter by domain whitelist
         const hasAIUseLabel = entityLabels.some(label => 
           normalizeLabel(label) === normalizeLabel("use-by-ai")
         );
         
-        let isIncludedDomain = false;
-        if (shouldFilterByDomain) {
-          // Check if domain is in the allowed list
-          isIncludedDomain = includedDomains.includes(domain);
-        } else {
-          // If allowAnyDomain is true, include all domains (label exclusions still apply)
-          isIncludedDomain = true;
-        }
+        // Check if domain is in the allowed list
+        const isIncludedDomain = includedDomains.includes(domain);
         
         // Special handling: entities with "use-by-ai" label are always included
-        // (even if their domain is not in the domains list and allowAnyDomain is false)
+        // even if their domain is not in the domains list
         // This allows selective inclusion of entities from domains not in the main list
         // (e.g., specific sensors or switches when their domain is excluded)
         
@@ -149,13 +139,13 @@ export async function fetchHAEntities(
             labels: entityLabels,
             hasAIUseLabel,
             isIncludedDomain,
-            shouldFilterByDomain,
             willInclude: true
           });
         }
         
         // Exclude if domain is not in allowed list (unless it has use-by-ai label)
-        if (shouldFilterByDomain && !isIncludedDomain && !hasAIUseLabel) {
+        // Since we always filter by domain whitelist now, exclude if not in list and no special label
+        if (!isIncludedDomain && !hasAIUseLabel) {
           return;
         }
 

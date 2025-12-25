@@ -339,12 +339,12 @@ export function processFunctionCalls(
                     // Temporarily override to catch closure
                     conn.callbacks.onclose = tempOnClose;
                     
-                    // Restore after configured delay
+                    // Restore after delay (5 seconds to allow service call to complete)
                     setTimeout(() => {
                       if (conn.callbacks) {
                         conn.callbacks.onclose = originalOnClose;
                       }
-                    }, ctx.config.ui?.connectionMonitorRestoreDelay || 5000);
+                    }, 5000);
                   }
                 }
               } catch (err) {

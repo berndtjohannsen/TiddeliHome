@@ -275,9 +275,8 @@ Audio Playback (direct from Gemini)
 - **Storage**: Custom JSON structure stored in browser memory (persists until page reload or new extraction)
 - **No Automatic Re-fetch**: Configuration is only updated when user manually triggers extraction
 - **Entity Filtering**: Configurable via `config.json` with label-based exceptions:
-  - **Configurable Domains**: Domains list configured in `config.json` (`functionCalling.domains`)
-  - **Allow Any Domain**: Can be enabled via `functionCalling.allowAnyDomain` in config
-  - **Label-Based Inclusion**: `switch` domain entities are included if they have the `use-by-ai` label (when switch domain not in main list)
+  - **Mandatory Domain List**: Domains must be specified in `config.json` (`functionCalling.domains`) - no wildcard option
+  - **Label-Based Inclusion**: Entities are included if they have the `use-by-ai` label, even if their domain is not in the main list
   - **Label-Based Exclusion**: Any entity with the `no_use-by_ai` label is excluded regardless of domain
   - **Label Normalization**: Label comparison is normalized to handle both hyphens and underscores (e.g., "use-by-ai" matches "use_by_ai")
 - **Benefits**: 
@@ -430,7 +429,7 @@ VITE_HA_ACCESS_TOKEN=your_long_lived_access_token_here
 - **Audio Settings**: Input/output sample rates, buffer size, channels, format
 - **Gemini Settings**: Model selection, API key, system instruction, grounding enablement
 - **Home Assistant Settings**: Base URL, access token, timeouts (REST and WebSocket)
-- **Function Calling Settings**: Allowed domains, service data properties, allowAnyDomain flag
+- **Function Calling Settings**: Allowed domains, service data properties
 - **UI Settings**: Feedback duration, auto-disconnect delay, connection monitor restore delay
 
 **`config/system-instruction.txt`** - System Instruction Template
@@ -456,10 +455,9 @@ VITE_HA_ACCESS_TOKEN=your_long_lived_access_token_here
 - Area information fetching
 - Device registry fetching (for area mapping)
 - Data conversion to custom JSON structure
-- Entity filtering based on configurable domains and labels:
-  - Uses domains from `config.json` (`functionCalling.domains`)
-  - Respects `allowAnyDomain` flag from config
-  - Includes `switch` entities with `use-by-ai` label (when switch not in main list)
+- Entity filtering based on mandatory domain list and labels:
+  - Uses domains from `config.json` (`functionCalling.domains`) - domains list is required
+  - Includes entities with `use-by-ai` label even if their domain is not in the main list
   - Excludes entities with `no_use-by_ai` label (regardless of domain)
   - Label comparison handles both hyphen and underscore formats
 

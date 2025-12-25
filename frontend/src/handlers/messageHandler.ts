@@ -19,6 +19,7 @@ export interface MessageHandlerContext {
   
   // Audio context
   outputAudioContext: AudioContext | null;
+  volumeGainNode: GainNode | null;
   
   // Session (will be updated when session is available)
   session: { value: any };

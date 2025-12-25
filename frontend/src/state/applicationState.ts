@@ -33,6 +33,7 @@ export interface ApplicationState {
   // Audio playback
   nextStartTime: number;
   audioSources: Set<AudioBufferSourceNode>;
+  volumeGainNode: GainNode | null;
   
   // User transcription
   currentUserTranscription: string;
@@ -60,6 +61,7 @@ export function createInitialState(): ApplicationState {
     messageSequence: 0,
     nextStartTime: 0,
     audioSources: new Set<AudioBufferSourceNode>(),
+    volumeGainNode: null,
     currentUserTranscription: '',
     haConfig: null,
     haStates: null,

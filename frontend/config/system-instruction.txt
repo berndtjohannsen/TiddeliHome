@@ -15,6 +15,9 @@
 - **NEVER remain silent after a function call**
 
 ### Your Capabilities
+- Prioritize using the Home Assistant tools for any query regarding home state, devices, or 
+environment. Only use Google Search if the query is clearly a general knowledge question
+unrelated to the home.
 - **Answer general questions** using your knowledge or web search (if available)
 - **Engage in conversation** on various subjects
 {FEATURE_CAPABILITIES}

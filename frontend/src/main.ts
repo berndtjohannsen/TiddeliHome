@@ -82,6 +82,8 @@ let timeoutManager: TimeoutManager | null = null;
 const micButton = document.getElementById('mic-button') as HTMLButtonElement;
 const muteButton = document.getElementById('mute-button') as HTMLButtonElement;
 const statusText = document.getElementById('status-text') as HTMLParagraphElement;
+const volumeSlider = document.getElementById('volume-slider') as HTMLInputElement | null;
+const volumeMuteButton = document.getElementById('volume-mute-button') as HTMLButtonElement | null;
 const settingsIcon = document.getElementById('settings-icon') as HTMLButtonElement | null;
 const settingsPanel = document.getElementById('settings-panel') as HTMLDivElement | null;
 const settingsOverlay = document.getElementById('settings-overlay') as HTMLDivElement | null;
@@ -123,6 +125,107 @@ function updateUI(connected: boolean, status: string) {
 }
 
 /**
+ * Handle volume slider changes (from dragging or input events)
+ */
+function handleVolumeChange() {
+  if (!volumeSlider) {
+    console.warn('Volume slider element not found');
+    return;
+  }
+  
+  const volume = parseFloat(volumeSlider.value);
+  setVolume(volume);
+}
+
+/**
+ * Set volume to a specific value (0-100)
+ */
+function setVolume(volume: number) {
+  if (!volumeSlider) return;
+  
+  // Clamp volume to 0-100
+  volume = Math.max(0, Math.min(100, volume));
+  volumeSlider.value = volume.toString();
+  
+  const volumePercent = volume / 100; // Convert 0-100 to 0-1
+  
+  // Save to localStorage
+  localStorage.setItem('tiddelihome_volume', volume.toString());
+  
+  // Update volume mute button icon state
+  updateVolumeMuteButtonState(volume);
+  
+  // Update gain node if it exists (audio context is active)
+  if (appState.volumeGainNode) {
+    appState.volumeGainNode.gain.value = volumePercent;
+    console.log(`Volume changed to ${volume}% (${volumePercent}), gain node updated`);
+  } else {
+    console.log(`Volume changed to ${volume}% (${volumePercent}), saved to localStorage (gain node not yet created - will apply on connect)`);
+  }
+}
+
+/**
+ * Update volume mute button icon state based on volume level
+ */
+function updateVolumeMuteButtonState(volume: number) {
+  if (!volumeMuteButton) return;
+  
+  if (volume === 0) {
+    volumeMuteButton.classList.add('muted');
+    volumeMuteButton.setAttribute('aria-label', 'Unmute volume');
+  } else {
+    volumeMuteButton.classList.remove('muted');
+    volumeMuteButton.setAttribute('aria-label', 'Mute volume');
+  }
+}
+
+/**
+ * Toggle volume mute (0 if not muted, restore previous value if muted)
+ */
+function toggleVolumeMute() {
+  if (!volumeSlider) return;
+  
+  const currentVolume = parseFloat(volumeSlider.value);
+  
+  if (currentVolume === 0) {
+    // Unmute: restore to last saved non-zero volume or default to 80
+    const lastVolume = parseFloat(localStorage.getItem('tiddelihome_last_volume') || '80');
+    setVolume(lastVolume);
+  } else {
+    // Mute: save current volume and set to 0
+    localStorage.setItem('tiddelihome_last_volume', currentVolume.toString());
+    setVolume(0);
+  }
+}
+
+/**
+ * Handle volume slider track clicks (jump to mute or max)
+ */
+function handleVolumeSliderClick(event: MouseEvent) {
+  if (!volumeSlider) return;
+  
+  const rect = volumeSlider.getBoundingClientRect();
+  const clickX = event.clientX - rect.left;
+  const trackWidth = rect.width;
+  const clickPercent = clickX / trackWidth;
+  
+  // Threshold: if click is within 10% of either end, jump to that endpoint
+  const threshold = 0.1;
+  
+  if (clickPercent <= threshold) {
+    // Clicked near start - set to mute (0)
+    setVolume(0);
+  } else if (clickPercent >= (1 - threshold)) {
+    // Clicked near end - set to max (100)
+    setVolume(100);
+  } else {
+    // Clicked in middle - calculate value based on position
+    const newVolume = Math.round(clickPercent * 100);
+    setVolume(newVolume);
+  }
+}
+
+/**
  * Toggle microphone mute state
  */
 function toggleMute() {
@@ -149,7 +252,7 @@ async function copyLogToClipboard() {
   if (!aiFunctionCalls) return;
   
   try {
-    await copyToClipboard(aiFunctionCalls.value, copyLogBtn || undefined, config.ui?.feedbackDuration);
+    await copyToClipboard(aiFunctionCalls.value, copyLogBtn || undefined, 2000); // 2 second feedback duration
   } catch (err) {
     // Error is already handled by copyToClipboard
   }
@@ -389,6 +492,12 @@ async function connectToGemini() {
     console.log(`Created inputAudioContext with actual sample rate: ${appState.inputAudioContext.sampleRate} Hz`);
     console.log(`Created outputAudioContext with actual sample rate: ${appState.outputAudioContext.sampleRate} Hz`);
 
+    // Create gain node for volume control and connect to destination
+    const savedVolume = parseFloat(localStorage.getItem('tiddelihome_volume') || '80');
+    appState.volumeGainNode = appState.outputAudioContext.createGain();
+    appState.volumeGainNode.gain.value = savedVolume / 100; // Convert 0-100 to 0-1
+    appState.volumeGainNode.connect(appState.outputAudioContext.destination);
+
     // Get User Media (microphone)
     // Note: getUserMedia requires HTTPS or localhost for security reasons
     // Accessing via IP address (e.g., http://192.168.1.100:3000) will fail
@@ -554,6 +663,7 @@ async function connectToGemini() {
       
       // Audio context
       outputAudioContext: appState.outputAudioContext,
+      volumeGainNode: appState.volumeGainNode,
       
       // Session (will be updated when session is available)
       session: sessionRef,
@@ -733,8 +843,8 @@ async function connectToGemini() {
           appState.session = null;
           const errorMsg = err instanceof Error ? err.message : String(err);
           updateUI(false, `Connection error: ${errorMsg}`);
-          // Auto-disconnect on error
-          setTimeout(() => disconnect(), config.ui?.autoDisconnectDelay || 100);
+          // Auto-disconnect on error (100ms delay to allow error logging)
+          setTimeout(() => disconnect(), 100);
         },
       },
     });
@@ -789,6 +899,9 @@ function disconnect() {
     appState.outputAudioContext.close().catch(() => {});
     appState.outputAudioContext = null;
   }
+  
+  // Clear volume gain node
+  appState.volumeGainNode = null;
 
   // Stop all audio sources
   appState.audioSources.forEach(s => {
@@ -830,6 +943,24 @@ function toggleConnection() {
   } else {
     connectToGemini();
   }
+}
+
+// Initialize volume slider
+const savedVolume = parseFloat(localStorage.getItem('tiddelihome_volume') || '80');
+if (volumeSlider) {
+  volumeSlider.value = savedVolume.toString();
+  volumeSlider.addEventListener('input', handleVolumeChange);
+  volumeSlider.addEventListener('change', handleVolumeChange); // Also listen to change event for better compatibility
+  volumeSlider.addEventListener('click', handleVolumeSliderClick); // Handle track clicks for mute/max
+  updateVolumeMuteButtonState(savedVolume); // Initialize mute button state
+  console.log('Volume slider initialized with value:', savedVolume);
+} else {
+  console.error('Volume slider element not found!');
+}
+
+// Initialize volume mute button
+if (volumeMuteButton) {
+  volumeMuteButton.addEventListener('click', toggleVolumeMute);
 }
 
 // Initialize

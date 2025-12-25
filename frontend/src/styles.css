@@ -50,6 +50,116 @@
     display: block;
   }
 
+  /* Volume control slider */
+  .volume-control-container {
+    min-width: 200px;
+  }
+
+  @media (max-width: 768px) {
+    .volume-control-container {
+      min-width: 160px;
+    }
+  }
+
+  /* Volume mute button */
+  .volume-mute-button {
+    transition: opacity 0.2s;
+  }
+
+  .volume-mute-button:hover {
+    opacity: 0.8;
+  }
+
+  .volume-mute-button:active {
+    opacity: 0.6;
+  }
+
+  /* Volume icon states */
+  .volume-muted-icon {
+    display: none !important;
+  }
+
+  .volume-mute-button.muted .volume-icon {
+    display: none !important;
+  }
+
+  .volume-mute-button.muted .volume-muted-icon {
+    display: block !important;
+  }
+
+  .volume-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent;
+    cursor: pointer;
+    height: 4px;
+    margin: 0;
+    padding: 0;
+  }
+
+  .volume-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 14px !important;
+    height: 14px !important;
+    min-width: 14px !important;
+    min-height: 14px !important;
+    border-radius: 50% !important;
+    background: white !important;
+    cursor: pointer;
+    border: none !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    transition: transform 0.1s;
+    margin-top: -5px; /* Center the thumb on the track */
+    box-sizing: border-box !important;
+  }
+
+  .volume-slider::-webkit-slider-thumb:hover {
+    transform: scale(1.15);
+  }
+
+  .volume-slider::-webkit-slider-thumb:active {
+    transform: scale(1.25);
+  }
+
+  .volume-slider::-moz-range-thumb {
+    width: 14px !important;
+    height: 14px !important;
+    min-width: 14px !important;
+    min-height: 14px !important;
+    border-radius: 50% !important;
+    background: white !important;
+    cursor: pointer;
+    border: none !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    transition: transform 0.1s;
+    box-sizing: border-box !important;
+  }
+
+  .volume-slider::-moz-range-thumb:hover {
+    transform: scale(1.15);
+  }
+
+  .volume-slider::-moz-range-thumb:active {
+    transform: scale(1.25);
+  }
+
+  .volume-slider::-webkit-slider-runnable-track {
+    width: 100%;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 2px;
+    border: none;
+  }
+
+  .volume-slider::-moz-range-track {
+    width: 100%;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 2px;
+    border: none;
+  }
+
   /* Settings panel slide animation */
   .settings-panel:not(.open) {
     right: -100% !important; /* Hidden by default (off-screen to the right) */
@@ -129,7 +239,7 @@
     justify-content: center !important; /* Center horizontally */
     margin-left: auto !important; /* Center horizontally */
     margin-right: auto !important; /* Center horizontally */
-    margin-bottom: 3rem !important; /* Increased spacing to mute button (was 2rem/mb-8) */
+    margin-bottom: 1.5rem !important; /* Reduced spacing to elements below */
     font-size: 0 !important; /* Remove text rendering */
     background: #4CAF50 !important; /* Material Green 500 */
     border-radius: 40px !important; /* Oval shape - half of height */
@@ -157,7 +267,7 @@
     justify-content: center !important; /* Same justification as base state */
     margin-left: auto !important; /* Same margins as base state */
     margin-right: auto !important;
-    margin-bottom: 3rem !important;
+    margin-bottom: 1.5rem !important; /* Same spacing as base state */
     font-size: 0 !important; /* Same font-size as base state */
     background: #E57373 !important; /* Coral/salmon-red for hangup button (Material Red 300) */
     color: #000000;

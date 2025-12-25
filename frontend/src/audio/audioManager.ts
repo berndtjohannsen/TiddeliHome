@@ -27,7 +27,13 @@ export async function handleAudioOutput(
 
     const source = audioCtx.createBufferSource();
     source.buffer = audioBuffer;
-    source.connect(audioCtx.destination);
+    
+    // Connect through gain node for volume control, or directly to destination if no gain node
+    if (ctx.volumeGainNode) {
+      source.connect(ctx.volumeGainNode);
+    } else {
+      source.connect(audioCtx.destination);
+    }
 
     source.addEventListener('ended', () => {
       ctx.audioSources.delete(source);

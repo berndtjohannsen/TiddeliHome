@@ -45,9 +45,6 @@ export interface AppConfig {
     outputSampleRate: number;
   };
   ui?: {
-    feedbackDuration?: number;
-    autoDisconnectDelay?: number;
-    connectionMonitorRestoreDelay?: number;
     noActionTimeout?: number;
   };
   features: {
@@ -61,8 +58,6 @@ export interface AppConfig {
       functionCalling?: {
         domains?: string[];
         serviceDataProperties?: Record<string, any>;
-        allowAnyDomain?: boolean;
-        allowAnyServiceData?: boolean;
       };
     };
   };
@@ -76,8 +71,6 @@ export interface AppConfig {
   functionCalling: {
     domains?: string[];
     serviceDataProperties?: Record<string, any>;
-    allowAnyDomain?: boolean;
-    allowAnyServiceData?: boolean;
   };
 }
 
@@ -144,8 +137,6 @@ export function loadConfig(): AppConfig {
               description: 'Color name for lights (e.g., "red", "blue", "warm")'
             }
           },
-          allowAnyDomain: false,
-          allowAnyServiceData: true
         }
       };
     }
@@ -173,8 +164,6 @@ export function loadConfig(): AppConfig {
               description: 'Color name for lights (e.g., "red", "blue", "warm")'
             }
           },
-          allowAnyDomain: false,
-          allowAnyServiceData: true
         }
       };
     }
@@ -196,9 +185,7 @@ export function loadConfig(): AppConfig {
             type: 'string',
             description: 'Color name for lights (e.g., "red", "blue", "warm")'
           }
-        },
-        allowAnyDomain: false,
-        allowAnyServiceData: true
+        }
       }
     };
   };
@@ -272,9 +259,6 @@ export function loadConfig(): AppConfig {
     // Backward compatibility: expose audio at top level
     audio: audioConfig,
     ui: {
-      feedbackDuration: userConfig?.ui?.feedbackDuration ?? configData.ui?.feedbackDuration ?? 2000,
-      autoDisconnectDelay: userConfig?.ui?.autoDisconnectDelay ?? configData.ui?.autoDisconnectDelay ?? 100,
-      connectionMonitorRestoreDelay: userConfig?.ui?.connectionMonitorRestoreDelay ?? configData.ui?.connectionMonitorRestoreDelay ?? 5000,
       noActionTimeout: userConfig?.ui?.noActionTimeout ?? configData.ui?.noActionTimeout ?? 10000
     },
     features: {

@@ -167,39 +167,24 @@ export function buildTools(appConfig: AppConfig): any[] {
   // Get function calling config from features.homeAssistant (new structure) or top-level (backward compatibility)
   const funcCallingConfig = appConfig.features?.homeAssistant?.functionCalling || appConfig.functionCalling;
   const domains = funcCallingConfig.domains || [];
-  const serviceDataProps = funcCallingConfig.serviceDataProperties || {};
-  const allowAnyDomain = funcCallingConfig.allowAnyDomain !== false; // Default to true if not specified
-  const allowAnyServiceData = funcCallingConfig.allowAnyServiceData !== false; // Default to true if not specified
   
-  // Build domain property
+  // Build domain property - always restrict to configured domains
   const domainProperty: any = {
     type: 'string',
     description: 'The domain of the entity to control (e.g., "light", "scene", "script", "switch", "sensor", "climate", "cover", etc.)'
   };
   
-  // Add enum only if domains are restricted and we have domains configured
-  if (!allowAnyDomain && domains.length > 0) {
+  // Add enum constraint if domains are configured (mandatory domain list)
+  if (domains.length > 0) {
     domainProperty.enum = domains;
   }
   
-  // Build service_data property
+  // Build service_data property - always allow any properties (unrestricted object)
   const serviceDataProperty: any = {
     type: 'object',
     description: 'Optional additional service data. Properties depend on the domain and service being called.'
   };
-  
-  // Add specific properties if configured and not allowing any service data
-  if (!allowAnyServiceData && Object.keys(serviceDataProps).length > 0) {
-    serviceDataProperty.properties = {};
-    for (const [propName, propDef] of Object.entries(serviceDataProps)) {
-      const prop = propDef as any;
-      serviceDataProperty.properties[propName] = {
-        type: prop.type === 'number' ? 'number' : 'string',
-        description: prop.description || `Additional parameter: ${propName}`
-      };
-    }
-  }
-  // If allowAnyServiceData is true, don't restrict properties - let any object be passed
+  // Note: serviceDataProperties in config is kept for documentation but not used to restrict the schema
   
   return [
     {

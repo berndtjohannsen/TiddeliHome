@@ -473,7 +473,6 @@ export async function extractHAConfigFromHomeAssistant(
       appConfig.homeAssistant.accessToken,
       logToUI,
       appConfig.functionCalling.domains,
-      appConfig.functionCalling.allowAnyDomain,
       appConfig.homeAssistant.webSocketConnectionTimeout
     );
 

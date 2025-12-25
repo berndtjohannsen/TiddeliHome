@@ -24,14 +24,11 @@
       "disabled": false,
       "startOfSpeechSensitivity": "START_SENSITIVITY_MEDIUM",
       "endOfSpeechSensitivity": "END_SENSITIVITY_MEDIUM",
-      "prefixPaddingMs": 20,
-      "silenceDurationMs": 100
+      "prefixPaddingMs": 50,
+      "silenceDurationMs": 500
     }
   },
   "ui": {
-    "feedbackDuration": 2000,
-    "autoDisconnectDelay": 100,
-    "connectionMonitorRestoreDelay": 5000,
     "noActionTimeout": 10000
   },
   "features": {
@@ -52,9 +49,7 @@
             "type": "string",
             "description": "Color name for lights (e.g., \"red\", \"blue\", \"warm\")"
           }
-        },
-        "allowAnyDomain": false,
-        "allowAnyServiceData": true
+        }
       }
     }
   }
