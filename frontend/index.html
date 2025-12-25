@@ -27,7 +27,19 @@
     <div class="settings-panel fixed top-0 w-full max-w-[400px] h-screen bg-white shadow-[-4px_0_20px_rgba(0,0,0,0.2),-2px_0_10px_rgba(0,0,0,0.14)] z-[1000] flex flex-col overflow-hidden" id="settings-panel">
         <div class="flex justify-between items-center p-4 border-b border-gray-300 bg-white">
             <h2 class="text-gray-900 text-xl font-medium">Settings</h2>
-            <button class="settings-close-btn" id="settings-close-btn" aria-label="Close settings">✕</button>
+            <div class="flex items-center gap-2">
+                <button class="settings-header-btn" id="download-config-btn" aria-label="Download configuration" title="Download configuration">
+                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 fill-current">
+                        <path d="M19 12v7H5v-7H3v7c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-7h-2zm-6 .67l2.59-2.58L17 11.5l-5 5-5-5 1.41-1.41L11 12.67V3h2z"/>
+                    </svg>
+                </button>
+                <button class="settings-header-btn" id="upload-config-btn" aria-label="Upload configuration" title="Upload configuration">
+                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 fill-current">
+                        <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
+                    </svg>
+                </button>
+                <button class="settings-close-btn" id="settings-close-btn" aria-label="Close settings">✕</button>
+            </div>
         </div>
         
         <div class="flex border-b border-gray-300 bg-white">
@@ -252,6 +264,25 @@
                 </div>
             </div>
 
+            <div class="mb-6 border-t border-gray-300 pt-4">
+                <div class="flex justify-between items-center mb-3">
+                    <label class="block text-gray-900 text-sm text-left font-medium" for="gemini-system-instruction">
+                        General System Instruction:
+                    </label>
+                    <button id="reset-gemini-instruction-btn" class="btn-primary btn-blue py-1 px-3 text-xs">
+                        Reset to Default
+                    </button>
+                </div>
+                <textarea 
+                    id="gemini-system-instruction" 
+                    class="settings-textarea w-full min-h-[300px]" 
+                    placeholder="General system instructions will appear here..."
+                ></textarea>
+                <p class="text-xs text-gray-600 mt-2 text-left leading-relaxed">
+                    Customize the base system instructions (general behavior, audio responses, capabilities). Leave empty to use the default template.
+                </p>
+            </div>
+
             <div class="mb-6">
                 <button id="save-gemini-config-btn" class="btn-primary btn-blue w-full">
                     💾 Save Gemini Configuration
@@ -272,6 +303,31 @@
             <div class="mb-6 js-hidden" id="ha-config-summary-section">
                 <label class="block text-gray-900 text-sm mb-2 text-left font-medium">Extracted Configuration Summary:</label>
                 <div id="ha-config-summary" class="ha-config-summary"></div>
+            </div>
+
+            <div class="mb-6 border-t border-gray-300 pt-4">
+                <div class="flex justify-between items-center mb-3">
+                    <label class="block text-gray-900 text-sm text-left font-medium" for="ha-system-instruction">
+                        Home Assistant System Instruction:
+                    </label>
+                    <button id="reset-ha-instruction-btn" class="btn-primary btn-blue py-1 px-3 text-xs">
+                        Reset to Default
+                    </button>
+                </div>
+                <textarea 
+                    id="ha-system-instruction" 
+                    class="settings-textarea w-full min-h-[300px]" 
+                    placeholder="Home Assistant specific system instructions will appear here..."
+                ></textarea>
+                <p class="text-xs text-gray-600 mt-2 text-left leading-relaxed">
+                    Customize how the AI interacts with Home Assistant. Leave empty to use the default template.
+                </p>
+                <div class="mt-4">
+                    <button id="save-ha-instruction-btn" class="btn-primary btn-blue w-full">
+                        💾 Save HA Instruction
+                    </button>
+                    <div id="ha-instruction-status" class="text-sm text-gray-600 mt-2 min-h-[1.2rem]"></div>
+                </div>
             </div>
         </div>
         

@@ -14,7 +14,7 @@ export type { AppConfig };
  * @param featureName The feature name (e.g., "HOME_ASSISTANT")
  * @returns The extracted section content (without markers), or null if not found
  */
-function extractFeatureSection(template: string, featureName: string): string | null {
+export function extractFeatureSection(template: string, featureName: string): string | null {
   const startMarker = `{START_FEATURE_${featureName}}`;
   const endMarker = `{END_FEATURE_${featureName}}`;
   

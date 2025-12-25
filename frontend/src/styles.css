@@ -396,6 +396,30 @@
     background-color: #e5e7eb; /* gray-200 */
   }
 
+  .settings-header-btn {
+    background: transparent;
+    border: none;
+    color: #4b5563; /* gray-600 */
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 9999px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    padding: 0.5rem;
+  }
+
+  .settings-header-btn:hover {
+    background-color: #f3f4f6; /* gray-100 */
+    color: #111827; /* gray-900 */
+  }
+
+  .settings-header-btn:active {
+    background-color: #e5e7eb; /* gray-200 */
+  }
+
   .settings-tab {
     flex: 1;
     padding: 1rem;

@@ -1,10 +1,12 @@
 import './styles.css';
 import { GoogleGenAI, Modality, StartSensitivity, EndSensitivity } from '@google/genai';
 import { pcmToGeminiBlob } from './utils/audioUtils';
-import { buildSystemInstruction as buildSystemInstructionUtil, buildTools as buildToolsUtil } from './utils/geminiConfigBuilder';
+import { buildSystemInstruction as buildSystemInstructionUtil, buildTools as buildToolsUtil, extractFeatureSection } from './utils/geminiConfigBuilder';
 import { executeHAServiceCall as executeHAServiceCallApi, getHAEntityState as getHAEntityStateApi } from './api/haRestApi';
 import { createUILogger } from './utils/uiLogger';
 import { loadConfig } from './utils/configLoader';
+// @ts-ignore - Vite handles ?raw imports at build time
+import systemInstructionTemplate from '../config/system-instruction.txt?raw';
 import { getHAWebSocketUrl } from './utils/haUrlBuilder';
 import { updateHAConfigFromTextarea, extractHAConfigFromHomeAssistant } from './utils/haConfigManager';
 import { updateUIState, copyToClipboard, updateMuteState } from './utils/uiHelpers';
@@ -88,6 +90,8 @@ const settingsIcon = document.getElementById('settings-icon') as HTMLButtonEleme
 const settingsPanel = document.getElementById('settings-panel') as HTMLDivElement | null;
 const settingsOverlay = document.getElementById('settings-overlay') as HTMLDivElement | null;
 const settingsCloseBtn = document.getElementById('settings-close-btn') as HTMLButtonElement | null;
+const downloadConfigBtn = document.getElementById('download-config-btn') as HTMLButtonElement | null;
+const uploadConfigBtn = document.getElementById('upload-config-btn') as HTMLButtonElement | null;
 const settingsTabs = document.querySelectorAll('.settings-tab') as NodeListOf<HTMLButtonElement>;
 const geminiTab = document.getElementById('gemini-tab') as HTMLDivElement | null;
 const homeAssistantTab = document.getElementById('homeassistant-tab') as HTMLDivElement | null;
@@ -98,6 +102,10 @@ const extractHaConfigBtn = document.getElementById('extract-ha-config-btn') as H
 const extractStatus = document.getElementById('extract-status') as HTMLDivElement | null;
 const haConfigSummary = document.getElementById('ha-config-summary') as HTMLDivElement | null;
 const haConfigSummarySection = document.getElementById('ha-config-summary-section') as HTMLDivElement | null;
+const haSystemInstruction = document.getElementById('ha-system-instruction') as HTMLTextAreaElement | null;
+const saveHaInstructionBtn = document.getElementById('save-ha-instruction-btn') as HTMLButtonElement | null;
+const resetHaInstructionBtn = document.getElementById('reset-ha-instruction-btn') as HTMLButtonElement | null;
+const haInstructionStatus = document.getElementById('ha-instruction-status') as HTMLDivElement | null;
 const aiFunctionCalls = document.getElementById('ai-function-calls') as HTMLTextAreaElement | null;
 const copyLogBtn = document.getElementById('copy-log-btn') as HTMLButtonElement | null;
 
@@ -320,8 +328,10 @@ function switchTab(tabName: 'gemini' | 'homeassistant' | 'docs' | 'debug') {
   if (tabName === 'gemini' && geminiTab) {
     geminiTab.classList.add('active');
     loadGeminiConfig(); // Load config when tab is shown
+    loadGeminiSystemInstruction(); // Load general instruction when tab is shown
   } else if (tabName === 'homeassistant' && homeAssistantTab) {
     homeAssistantTab.classList.add('active');
+    loadHASystemInstruction(); // Load HA instruction when tab is shown
   } else if (tabName === 'docs' && docsTab) {
     docsTab.classList.add('active');
   } else if (tabName === 'debug' && debugTab) {
@@ -968,6 +978,80 @@ micButton.addEventListener('click', toggleConnection);
 muteButton.addEventListener('click', toggleMute);
 updateUI(false, 'Ready - Click to start call');
 
+/**
+ * Download all configuration as JSON file
+ * Includes user overrides, defaults from config.json, and system instructions
+ */
+function downloadConfig() {
+  try {
+    // Reload config to get the complete merged configuration
+    const fullConfig = loadConfig();
+    
+    // Create a config object with all settings (excluding runtime state)
+    const configToDownload: any = {
+      gemini: {
+        model: fullConfig.gemini.model,
+        apiKey: fullConfig.gemini.apiKey, // User's API key (if set)
+        systemInstruction: fullConfig.gemini.systemInstruction, // Full system instruction (template or override)
+        enableGrounding: fullConfig.gemini.enableGrounding,
+        enableAffectiveDialog: fullConfig.gemini.enableAffectiveDialog,
+        voiceName: fullConfig.gemini.voiceName,
+        languageCode: fullConfig.gemini.languageCode,
+        proactiveAudio: fullConfig.gemini.proactiveAudio,
+        audio: fullConfig.gemini.audio,
+        thinkingConfig: fullConfig.gemini.thinkingConfig,
+        initialGreeting: fullConfig.gemini.initialGreeting,
+        vadConfig: fullConfig.gemini.vadConfig
+      },
+      ui: fullConfig.ui,
+      features: {
+        homeAssistant: {
+          enabled: fullConfig.features.homeAssistant?.enabled,
+          baseUrl: fullConfig.features.homeAssistant?.baseUrl, // User's baseUrl (if set)
+          accessToken: fullConfig.features.homeAssistant?.accessToken, // User's accessToken (if set)
+          timeout: fullConfig.features.homeAssistant?.timeout,
+          webSocketConnectionTimeout: fullConfig.features.homeAssistant?.webSocketConnectionTimeout,
+          systemInstruction: fullConfig.features.homeAssistant?.systemInstruction, // HA system instruction override (if set)
+          functionCalling: fullConfig.features.homeAssistant?.functionCalling
+        }
+      },
+      // Add metadata
+      _metadata: {
+        version: '0.0.1',
+        exportedAt: new Date().toISOString(),
+        exportedBy: 'TiddeliHome',
+        note: 'This configuration includes user overrides and defaults. System instructions are included as full text.'
+      }
+    };
+    
+    // Convert to JSON string with indentation
+    const jsonString = JSON.stringify(configToDownload, null, 2);
+    
+    // Create a blob and download link
+    const blob = new Blob([jsonString], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `tiddelihome-config-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    console.log('Configuration downloaded successfully');
+  } catch (error) {
+    console.error('Error downloading configuration:', error);
+    alert('Error downloading configuration. Please try again.');
+  }
+}
+
+/**
+ * Upload configuration from JSON file (placeholder for future implementation)
+ */
+function uploadConfig() {
+  alert('Upload configuration functionality will be implemented soon.');
+}
+
 // Settings panel initialization and event listeners
 if (settingsIcon) {
   settingsIcon.addEventListener('click', toggleSettingsPanel);
@@ -980,6 +1064,18 @@ if (settingsCloseBtn) {
 }
 if (settingsOverlay) {
   settingsOverlay.addEventListener('click', toggleSettingsPanel);
+}
+if (downloadConfigBtn) {
+  downloadConfigBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    downloadConfig();
+  });
+}
+if (uploadConfigBtn) {
+  uploadConfigBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    uploadConfig();
+  });
 }
 
 // Tab switching
@@ -1020,6 +1116,8 @@ const geminiVadStartSensitivitySelect = document.getElementById('gemini-vad-star
 const geminiVadEndSensitivitySelect = document.getElementById('gemini-vad-end-sensitivity') as HTMLSelectElement | null;
 const geminiVadPrefixPaddingInput = document.getElementById('gemini-vad-prefix-padding') as HTMLInputElement | null;
 const geminiVadSilenceDurationInput = document.getElementById('gemini-vad-silence-duration') as HTMLInputElement | null;
+const geminiSystemInstruction = document.getElementById('gemini-system-instruction') as HTMLTextAreaElement | null;
+const resetGeminiInstructionBtn = document.getElementById('reset-gemini-instruction-btn') as HTMLButtonElement | null;
 const saveGeminiConfigBtn = document.getElementById('save-gemini-config-btn') as HTMLButtonElement | null;
 const geminiConfigStatus = document.getElementById('gemini-config-status') as HTMLDivElement | null;
 
@@ -1140,6 +1238,42 @@ function saveGeminiConfig() {
       return;
     }
     
+    // Save general system instruction if it was edited
+    if (geminiSystemInstruction) {
+      const generalText = geminiSystemInstruction.value.trim();
+      
+      // Reconstruct the full template with the general section + feature sections from default template
+      let fullInstruction = generalText;
+      
+      // Add FEATURE_CAPABILITIES placeholder (will be replaced during build)
+      if (!fullInstruction.endsWith('\n')) {
+        fullInstruction += '\n';
+      }
+      fullInstruction += '{FEATURE_CAPABILITIES}\n';
+      
+      // Extract and append feature sections from default template (with their markers)
+      const refStartMarker = '{START_FEATURE_REFERENCE_SOURCES}';
+      const refEndMarker = '{END_FEATURE_REFERENCE_SOURCES}';
+      const refStartIndex = systemInstructionTemplate.indexOf(refStartMarker);
+      const refEndIndex = systemInstructionTemplate.indexOf(refEndMarker);
+      if (refStartIndex !== -1 && refEndIndex !== -1) {
+        const refSection = systemInstructionTemplate.substring(refStartIndex, refEndIndex + refEndMarker.length);
+        fullInstruction += '\n' + refSection + '\n';
+      }
+      
+      const haStartMarker = '{START_FEATURE_HOME_ASSISTANT}';
+      const haEndMarker = '{END_FEATURE_HOME_ASSISTANT}';
+      const haStartIndex = systemInstructionTemplate.indexOf(haStartMarker);
+      const haEndIndex = systemInstructionTemplate.indexOf(haEndMarker);
+      if (haStartIndex !== -1 && haEndIndex !== -1) {
+        const haSection = systemInstructionTemplate.substring(haStartIndex, haEndIndex + haEndMarker.length);
+        fullInstruction += '\n' + haSection + '\n';
+      }
+      
+      // Add system instruction to geminiConfig
+      geminiConfig.systemInstruction = fullInstruction.trim();
+    }
+    
     // Save to localStorage
     saveConfigToStorage({ gemini: geminiConfig });
     
@@ -1170,6 +1304,192 @@ if (saveGeminiConfigBtn) {
   saveGeminiConfigBtn.addEventListener('click', (e) => {
     e.stopPropagation();
     saveGeminiConfig();
+  });
+}
+
+/**
+ * Extract the general section from system instruction template
+ * Returns everything before the first feature marker
+ */
+function extractGeneralSection(template: string): string {
+  // Find the first feature marker (START_FEATURE_ or FEATURE_CAPABILITIES)
+  const markers = [
+    '{FEATURE_CAPABILITIES}',
+    '{START_FEATURE_REFERENCE_SOURCES}',
+    '{START_FEATURE_HOME_ASSISTANT}'
+  ];
+  
+  let firstMarkerIndex = template.length;
+  for (const marker of markers) {
+    const index = template.indexOf(marker);
+    if (index !== -1 && index < firstMarkerIndex) {
+      firstMarkerIndex = index;
+    }
+  }
+  
+  // Return everything before the first marker, trimmed
+  return template.substring(0, firstMarkerIndex).trim();
+}
+
+/**
+ * Load general system instruction into the textarea
+ * Shows user override if exists, otherwise shows default from template
+ */
+function loadGeminiSystemInstruction() {
+  if (!geminiSystemInstruction) return;
+  
+  // Get user override from config (full system instruction)
+  const userOverride = config.gemini?.systemInstruction;
+  
+  if (userOverride && userOverride !== systemInstructionTemplate) {
+    // User has custom instruction - extract general section from it
+    const generalSection = extractGeneralSection(userOverride);
+    geminiSystemInstruction.value = generalSection;
+  } else {
+    // Extract default general section from template
+    const defaultGeneral = extractGeneralSection(systemInstructionTemplate);
+    geminiSystemInstruction.value = defaultGeneral;
+  }
+}
+
+/**
+ * Reset general system instruction to default (clear user override)
+ */
+function resetGeminiSystemInstruction() {
+  if (!geminiSystemInstruction) return;
+  
+  try {
+    // Extract default general section from template
+    const defaultGeneral = extractGeneralSection(systemInstructionTemplate);
+    geminiSystemInstruction.value = defaultGeneral;
+    
+  } catch (error) {
+    console.error('Error resetting general system instruction:', error);
+  }
+}
+
+/**
+ * Load HA system instruction into the textarea
+ * Shows user override if exists, otherwise shows default from template
+ */
+function loadHASystemInstruction() {
+  if (!haSystemInstruction) return;
+  
+  // Get user override from config
+  const userOverride = config.features?.homeAssistant?.systemInstruction;
+  
+  if (userOverride) {
+    // Show user's custom instruction
+    haSystemInstruction.value = userOverride;
+  } else {
+    // Extract default from template
+    const defaultInstruction = extractFeatureSection(systemInstructionTemplate, 'HOME_ASSISTANT');
+    haSystemInstruction.value = defaultInstruction || '';
+  }
+}
+
+/**
+ * Save HA system instruction to localStorage
+ */
+function saveHASystemInstruction() {
+  if (!haSystemInstruction || !haInstructionStatus) return;
+  
+  try {
+    const instructionText = haSystemInstruction.value.trim();
+    
+    // Save to localStorage (empty string means use default)
+    const haConfig: any = {
+      systemInstruction: instructionText || undefined // Save as undefined if empty (to use default)
+    };
+    
+    saveConfigToStorage({
+      features: {
+        homeAssistant: haConfig
+      }
+    });
+    
+    // Reload config to apply changes immediately
+    config = loadConfig();
+    
+    // Show success message
+    haInstructionStatus.textContent = '✅ HA instruction saved successfully';
+    haInstructionStatus.className = 'text-sm text-green-600 mt-2 min-h-[1.2rem]';
+    
+    // Clear success message after 3 seconds
+    setTimeout(() => {
+      if (haInstructionStatus) {
+        haInstructionStatus.textContent = '';
+        haInstructionStatus.className = 'text-sm text-gray-600 mt-2 min-h-[1.2rem]';
+      }
+    }, 3000);
+    
+  } catch (error) {
+    console.error('Error saving HA system instruction:', error);
+    if (haInstructionStatus) {
+      haInstructionStatus.textContent = '❌ Error saving instruction';
+      haInstructionStatus.className = 'text-sm text-red-600 mt-2 min-h-[1.2rem]';
+    }
+  }
+}
+
+/**
+ * Reset HA system instruction to default (clear user override)
+ */
+function resetHASystemInstruction() {
+  if (!haSystemInstruction || !haInstructionStatus) return;
+  
+  try {
+    // Extract default from template
+    const defaultInstruction = extractFeatureSection(systemInstructionTemplate, 'HOME_ASSISTANT');
+    haSystemInstruction.value = defaultInstruction || '';
+    
+    // Remove override from localStorage by loading existing config, deleting the property, and saving
+    const existingConfig = loadConfigFromStorage() || {};
+    if (existingConfig.features?.homeAssistant?.systemInstruction !== undefined) {
+      const haConfig = { ...existingConfig.features?.homeAssistant };
+      delete haConfig.systemInstruction;
+      saveConfigToStorage({
+        features: {
+          homeAssistant: haConfig
+        }
+      });
+    }
+    
+    // Reload config to apply changes immediately
+    config = loadConfig();
+    
+    // Show success message
+    haInstructionStatus.textContent = '✅ Reset to default successfully';
+    haInstructionStatus.className = 'text-sm text-green-600 mt-2 min-h-[1.2rem]';
+    
+    // Clear success message after 3 seconds
+    setTimeout(() => {
+      if (haInstructionStatus) {
+        haInstructionStatus.textContent = '';
+        haInstructionStatus.className = 'text-sm text-gray-600 mt-2 min-h-[1.2rem]';
+      }
+    }, 3000);
+    
+  } catch (error) {
+    console.error('Error resetting HA system instruction:', error);
+    if (haInstructionStatus) {
+      haInstructionStatus.textContent = '❌ Error resetting instruction';
+      haInstructionStatus.className = 'text-sm text-red-600 mt-2 min-h-[1.2rem]';
+    }
+  }
+}
+
+// Initialize HA system instruction UI
+if (saveHaInstructionBtn) {
+  saveHaInstructionBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    saveHASystemInstruction();
+  });
+}
+if (resetHaInstructionBtn) {
+  resetHaInstructionBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    resetHASystemInstruction();
   });
 }
 
