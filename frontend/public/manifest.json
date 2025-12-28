@@ -3,6 +3,7 @@
   "short_name": "TiddeliHome",
   "description": "AI voice assistant for Home Assistant",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#2A2A2A",
   "theme_color": "#2A2A2A",
@@ -12,13 +13,13 @@
       "src": "/icons/android-chrome-192x192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
       "src": "/icons/android-chrome-512x512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     }
   ]
 }

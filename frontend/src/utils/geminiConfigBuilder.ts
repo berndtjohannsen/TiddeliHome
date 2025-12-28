@@ -9,73 +9,20 @@ import { AppConfig } from './configLoader';
 export type { AppConfig };
 
 /**
- * Extract a feature section from template using START/END markers
- * @param template The full template
- * @param featureName The feature name (e.g., "HOME_ASSISTANT")
- * @returns The extracted section content (without markers), or null if not found
- */
-export function extractFeatureSection(template: string, featureName: string): string | null {
-  const startMarker = `{START_FEATURE_${featureName}}`;
-  const endMarker = `{END_FEATURE_${featureName}}`;
-  
-  const startIndex = template.indexOf(startMarker);
-  const endIndex = template.indexOf(endMarker);
-  
-  if (startIndex === -1 || endIndex === -1 || startIndex >= endIndex) {
-    return null;
-  }
-  
-  const sectionStart = startIndex + startMarker.length;
-  const sectionContent = template.substring(sectionStart, endIndex).trim();
-  return sectionContent;
-}
-
-/**
- * Remove a feature section from template (including markers)
- * @param template The full template
- * @param featureName The feature name (e.g., "HOME_ASSISTANT")
- * @returns Template with the feature section removed
- */
-function removeFeatureSection(template: string, featureName: string): string {
-  const startMarker = `{START_FEATURE_${featureName}}`;
-  const endMarker = `{END_FEATURE_${featureName}}`;
-  
-  const startIndex = template.indexOf(startMarker);
-  const endIndex = template.indexOf(endMarker);
-  
-  if (startIndex === -1 || endIndex === -1) {
-    return template;
-  }
-  
-  const sectionEnd = endIndex + endMarker.length;
-  const before = template.substring(0, startIndex);
-  const after = template.substring(sectionEnd);
-  
-  // Remove any leading/trailing newlines from the section we're removing
-  let result = before;
-  if (after.length > 0 && !after.startsWith('\n') && !before.endsWith('\n')) {
-    result += '\n';
-  }
-  result += after.trimStart();
-  
-  return result;
-}
-
-/**
- * Build system instruction with feature-based configuration
- * Extracts feature sections from template and conditionally includes them based on enabled features
+ * Build system instruction by concatenating general instruction and enabled feature instructions
  * Supports user overrides via config.features.*.systemInstruction
- * @param systemInstructionTemplate The base system instruction template
+ * @param generalInstruction The general/base system instruction
  * @param haConfig The Home Assistant configuration (optional, for dynamic data injection)
  * @param appConfig The application configuration (to check enabled features and overrides)
- * @returns The complete system instruction with feature sections embedded
+ * @returns The complete system instruction with feature sections concatenated
  */
 export function buildSystemInstruction(
-  systemInstructionTemplate: string,
+  generalInstruction: string,
   haConfig: CustomHAConfig | null,
   appConfig?: AppConfig
 ): string {
-  let instruction = systemInstructionTemplate;
+  // Start with the general instruction
+  let instruction = generalInstruction || '';
   
   // Build feature capabilities list
   const featureCapabilities: string[] = [];
@@ -87,13 +34,8 @@ export function buildSystemInstruction(
   if (haFeatureEnabled && hasHAConfig) {
     featureCapabilities.push('- **Control Home Assistant devices** using the functions below');
     
-    // Get HA instruction: use override from config if present, otherwise extract from template
+    // Get HA instruction from config (user override or default)
     let haInstruction = appConfig?.features?.homeAssistant?.systemInstruction;
-    
-    if (!haInstruction) {
-      // Extract from template
-      haInstruction = extractFeatureSection(instruction, 'HOME_ASSISTANT');
-    }
     
     if (haInstruction) {
       // Replace dynamic placeholders (like HA_CONFIG_JSON)
@@ -102,18 +44,11 @@ export function buildSystemInstruction(
         haInstruction = haInstruction.replace('{HA_CONFIG_JSON}', configStr);
       }
       
-      // Replace the entire section (with markers) with processed content
-      const startMarker = '{START_FEATURE_HOME_ASSISTANT}';
-      const endMarker = '{END_FEATURE_HOME_ASSISTANT}';
-      const startIndex = instruction.indexOf(startMarker);
-      const endIndex = instruction.indexOf(endMarker);
-      
-      if (startIndex !== -1 && endIndex !== -1) {
-        const sectionEnd = endIndex + endMarker.length;
-        const before = instruction.substring(0, startIndex);
-        const after = instruction.substring(sectionEnd);
-        instruction = before + haInstruction + (after.startsWith('\n') ? '' : '\n') + after;
+      // Append HA instruction
+      if (instruction && !instruction.endsWith('\n')) {
+        instruction += '\n';
       }
+      instruction += '\n' + haInstruction;
       
       console.log('✅ System instruction built with HA config:', {
         entityCount: haConfig.entities.length,
@@ -122,8 +57,6 @@ export function buildSystemInstruction(
       });
     }
   } else {
-    // Remove HA section if feature not enabled or no config
-    instruction = removeFeatureSection(instruction, 'HOME_ASSISTANT');
     if (!haFeatureEnabled) {
       console.log('ℹ️ Home Assistant feature is disabled');
     } else {
@@ -131,24 +64,16 @@ export function buildSystemInstruction(
     }
   }
   
-  // Process Reference Sources feature (placeholder for future document/context feature)
-  // For now, we'll remove markers but keep the content (could add enable check in the future)
-  const referenceSourcesSection = extractFeatureSection(instruction, 'REFERENCE_SOURCES');
-  if (referenceSourcesSection !== null) {
-    // Remove the markers but keep the content
-    const startMarker = '{START_FEATURE_REFERENCE_SOURCES}';
-    const endMarker = '{END_FEATURE_REFERENCE_SOURCES}';
-    const startIndex = instruction.indexOf(startMarker);
-    const endIndex = instruction.indexOf(endMarker);
-    if (startIndex !== -1 && endIndex !== -1) {
-      const sectionEnd = endIndex + endMarker.length;
-      const before = instruction.substring(0, startIndex);
-      const after = instruction.substring(sectionEnd);
-      instruction = before + referenceSourcesSection + after;
+  // Process Reference Sources feature
+  const referenceSourcesInstruction = appConfig?.features?.referenceSources?.systemInstruction;
+  if (referenceSourcesInstruction) {
+    if (instruction && !instruction.endsWith('\n')) {
+      instruction += '\n';
     }
+    instruction += '\n' + referenceSourcesInstruction;
   }
   
-  // Replace feature capabilities placeholder
+  // Replace feature capabilities placeholder in general instruction
   const capabilitiesText = featureCapabilities.length > 0 
     ? '\n' + featureCapabilities.join('\n') 
     : '';

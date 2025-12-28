@@ -4,8 +4,6 @@
  */
 
 import configData from '../../config/config.json';
-// @ts-ignore - Vite handles ?raw imports at build time
-import systemInstructionTemplate from '../../config/system-instruction.txt?raw';
 
 /**
  * Application configuration type
@@ -48,6 +46,9 @@ export interface AppConfig {
     noActionTimeout?: number;
   };
   features: {
+    referenceSources?: {
+      systemInstruction?: string;
+    };
     homeAssistant?: {
       enabled?: boolean;
       baseUrl: string;
@@ -109,8 +110,8 @@ export function loadConfig(): AppConfig {
     fromConfigJson: configJsonHA
   });
   
-  // Get system instruction: user config > text file template
-  const systemInstruction = userConfig?.gemini?.systemInstruction || systemInstructionTemplate;
+  // Get system instruction: user config > config.json default
+  const systemInstruction = userConfig?.gemini?.systemInstruction || configData.gemini?.systemInstruction || '';
   
   // Helper function to get HA config from new structure or old structure (backward compatibility)
   const getHAConfig = () => {
@@ -125,6 +126,7 @@ export function loadConfig(): AppConfig {
                      import.meta.env.VITE_HA_ACCESS_TOKEN || '').trim(),
         timeout: newHAConfig.timeout || 30000,
         webSocketConnectionTimeout: newHAConfig.webSocketConnectionTimeout || 5000,
+        systemInstruction: newHAConfig.systemInstruction || configData.features?.homeAssistant?.systemInstruction,
         functionCalling: newHAConfig.functionCalling || {
           domains: ['light', 'scene', 'script'],
           serviceDataProperties: {
@@ -262,12 +264,16 @@ export function loadConfig(): AppConfig {
       noActionTimeout: userConfig?.ui?.noActionTimeout ?? configData.ui?.noActionTimeout ?? 10000
     },
     features: {
+      referenceSources: {
+        systemInstruction: userConfig?.features?.referenceSources?.systemInstruction || configData.features?.referenceSources?.systemInstruction
+      },
       homeAssistant: {
         enabled: haConfig.enabled,
         baseUrl: haConfig.baseUrl,
         accessToken: haConfig.accessToken,
         timeout: haConfig.timeout,
         webSocketConnectionTimeout: haConfig.webSocketConnectionTimeout,
+        systemInstruction: haConfig.systemInstruction,
         functionCalling: haConfig.functionCalling
       }
     },

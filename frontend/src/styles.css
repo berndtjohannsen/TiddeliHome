@@ -491,10 +491,10 @@
     color: #9ca3af; /* gray-400 */
   }
 
-  .settings-icon-btn {
+  .settings-icon-btn,
+  .install-icon-btn {
     position: fixed !important;
     top: 1rem;
-    right: 1rem;
     background-color: rgba(255, 255, 255, 0.1);
     color: white;
     width: 3rem;
@@ -512,11 +512,33 @@
     pointer-events: auto !important; /* Ensure it's clickable above overlay */
   }
 
-  .settings-icon-btn:hover {
+  .settings-icon-btn {
+    right: 1rem;
+  }
+
+  .install-icon-btn {
+    left: 1rem; /* Left-aligned to avoid overlapping version number */
+    right: auto;
+    width: auto;
+    min-width: 3rem;
+    padding: 0.5rem 1rem;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    white-space: nowrap;
+  }
+
+  .install-icon-btn .install-text {
+    font-size: 0.875rem;
+    font-weight: 500;
+  }
+
+  .settings-icon-btn:hover,
+  .install-icon-btn:hover {
     background-color: rgba(255, 255, 255, 0.2);
   }
 
-  .settings-icon-btn:active {
+  .settings-icon-btn:active,
+  .install-icon-btn:active {
     background-color: rgba(255, 255, 255, 0.15);
   }
 
