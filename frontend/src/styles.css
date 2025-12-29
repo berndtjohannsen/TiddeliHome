@@ -87,6 +87,61 @@
     display: block !important;
   }
 
+  /* AI Speaking Indicator - Discrete visual feedback */
+  .ai-speaking-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 4px;
+    opacity: 0.6;
+  }
+
+  .ai-speaking-indicator.hidden {
+    display: none;
+  }
+
+  .ai-speaking-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: #4CAF50; /* Material green */
+    animation: aiSpeakingPulse 1.5s ease-in-out infinite;
+  }
+
+  .ai-speaking-text {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.6);
+    font-style: italic;
+  }
+
+  @keyframes aiSpeakingPulse {
+    0%, 100% {
+      opacity: 0.4;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 1;
+      transform: scale(1.2);
+    }
+  }
+
+  @media (max-width: 768px) {
+    .ai-speaking-indicator {
+      gap: 4px;
+      margin-top: 2px;
+    }
+    
+    .ai-speaking-dot {
+      width: 6px;
+      height: 6px;
+    }
+    
+    .ai-speaking-text {
+      font-size: 0.65rem;
+    }
+  }
+
   .volume-slider {
     -webkit-appearance: none;
     appearance: none;
@@ -369,6 +424,14 @@
 
   .btn-blue:hover {
     background-color: #1d4ed8; /* blue-700 */
+  }
+
+  .btn-red {
+    background-color: #ef4444; /* red-500 */
+  }
+
+  .btn-red:hover {
+    background-color: #dc2626; /* red-600 */
   }
 
   /* Settings panel components */

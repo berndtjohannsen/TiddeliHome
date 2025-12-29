@@ -447,15 +447,12 @@ export async function extractHAConfigFromHomeAssistant(
   const timestamp = new Date().toISOString();
   
   if (logToUI) {
-    logToUI(`\nAPP → HA [#${seq}] (WebSocket)\n`);
-    logToUI(`Connecting to HA WebSocket for config extraction\n`);
-    logToUI(`   Base URL: ${appConfig.homeAssistant.baseUrl || 'Not set'}\n`);
-    logToUI(`   WebSocket URL: ${wsUrl.replace(/\/api\/websocket$/, '')}...\n`);
-    logToUI(`   Access Token: ${appConfig.homeAssistant.accessToken ? 'Set (' + appConfig.homeAssistant.accessToken.length + ' chars)' : 'Missing'}\n`);
-    if (appConfig.homeAssistant.accessToken) {
-      logToUI(`   Token Preview: ${appConfig.homeAssistant.accessToken.substring(0, 10)}...\n`);
-    }
-    logToUI(`   Purpose: Fetch entity/device/area registries\n`);
+    logToUI(`\nAPP → HA [#${seq}] (WebSocket)\n`, 'normal');
+    logToUI(`Connecting to HA WebSocket for config extraction\n`, 'normal');
+    logToUI(`   Base URL: ${appConfig.homeAssistant.baseUrl || 'Not set'}\n`, 'debug'); // Detailed connection info is debug
+    logToUI(`   WebSocket URL: ${wsUrl.replace(/\/api\/websocket$/, '')}...\n`, 'debug'); // Detailed connection info is debug
+    logToUI(`   Access Token: ${appConfig.homeAssistant.accessToken ? 'Set' : 'Missing'}\n`, 'debug'); // Security: Never log token details
+    logToUI(`   Purpose: Fetch entity/device/area registries\n`, 'debug'); // Purpose is debug
   }
 
   try {
@@ -491,19 +488,19 @@ export async function extractHAConfigFromHomeAssistant(
     
     const responseTimestamp = new Date().toISOString();
     if (logToUI) {
-      logToUI(`\nHA → APP [#${seq}] (WebSocket)\n`);
-      logToUI(`Config extraction successful\n`);
-      logToUI(`   Entities extracted: ${extractedConfig.entities.length}\n`);
+      logToUI(`\nHA → APP [#${seq}] (WebSocket)\n`, 'normal');
+      logToUI(`Config extraction successful\n`, 'normal');
+      logToUI(`   Entities extracted: ${extractedConfig.entities.length}\n`, 'normal');
       const domains = [...new Set(extractedConfig.entities.map(e => e.domain))];
-      logToUI(`   Domains: ${domains.join(', ')}\n`);
+      logToUI(`   Domains: ${domains.join(', ')}\n`, 'normal');
       const areas = [...new Set(extractedConfig.entities.map(e => e.area).filter(a => a))];
       if (areas.length > 0) {
-        logToUI(`   Areas: ${areas.join(', ')}\n`);
+        logToUI(`   Areas: ${areas.join(', ')}\n`, 'normal');
       }
       
-      // Log the actual JSON after the summary
-      logToUI(`\nHA Config JSON:\n`);
-      logToUI(`${configJson}\n`);
+      // Log the actual JSON after the summary (debug level - very verbose)
+      logToUI(`\nHA Config JSON:\n`, 'debug');
+      logToUI(`${configJson}\n`, 'debug');
     }
 
     // Update config callback (config only, no states)

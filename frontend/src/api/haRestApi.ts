@@ -90,17 +90,14 @@ export async function executeHAServiceCall(
   logToUI(`   REST API URL: ${serviceUrl}\n`);
   logToUI(`   Method: POST\n`);
   logToUI(`   Headers:\n`);
-  logToUI(`     Authorization: Bearer ${config.accessToken.substring(0, 10)}...${config.accessToken.substring(config.accessToken.length - 4)}\n`);
+  logToUI(`     Authorization: Bearer [REDACTED]\n`); // Security: Never log tokens
   logToUI(`     Content-Type: application/json\n`);
   logToUI(`   Request Body: ${JSON.stringify(requestBody, null, 2)}\n`);
   if (service_data && Object.keys(service_data).length > 0) {
     logToUI(`   Service data: ${JSON.stringify(service_data)}\n`);
   }
   
-  console.log(`Executing HA service call: ${domain}.${service}`, {
-    url: serviceUrl,
-    body: requestBody
-  });
+  // Service call details are logged to UI debug panel
   
   try {
     const response = await fetch(serviceUrl, {
@@ -125,13 +122,11 @@ export async function executeHAServiceCall(
     }
     
     const result = await response.json();
-    console.log('HA service call successful:', result);
     logToUI(`Successfully executed ${domain}.${service} on ${entityId}\n`);
     logToUI(`   Response Body: ${JSON.stringify(result, null, 2)}\n`);
     
     return seq;
   } catch (error: any) {
-    console.error('HA service call failed:', error);
     const errorTimestamp = new Date().toISOString();
     logToUI(`\nERROR\n`);
     logToUI(`   Error: ${error.message || String(error)}\n`);
@@ -225,8 +220,8 @@ export async function getHAEntityState(
     }
     return state;
   } catch (error: any) {
-    console.error('❌ HA state query failed:', error);
-    logToUI(`❌ [${timestamp}] Error: ${error.message || String(error)}\n`);
+    logToUI(`\nERROR\n`, 'normal');
+    logToUI(`   Error: ${error.message || String(error)}\n`, 'normal');
     throw error;
   }
 }

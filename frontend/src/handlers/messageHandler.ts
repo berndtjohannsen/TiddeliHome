@@ -127,7 +127,7 @@ export function createMessageHandler(ctx: MessageHandlerContext) {
           logToUI(`\nAI → APP (Response after function call)\n`);
           if (hasText) logToUI(`Has text response\n`);
           if (hasAudio) logToUI(`Has audio response\n`);
-          if (hasToolCall) logToUI(`🔧 Has tool call\n`);
+          if (hasToolCall) logToUI(`Has tool call\n`);
         }
       }
     }

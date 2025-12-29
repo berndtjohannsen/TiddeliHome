@@ -4,22 +4,30 @@
  */
 
 /**
- * Remove emoji/icon characters from a string
- * Matches common emoji patterns including single emojis and emoji sequences
- * Preserves newlines and spacing
+ * Log levels
  */
-function removeEmojis(text: string): string {
-  // Remove emoji patterns (including variations and sequences)
-  // This regex matches most emoji characters including:
-  // - Basic emojis (⚙️, 📋, ✅, etc.)
-  // - Emoji with variation selectors
-  // - Emoji sequences (flags, skin tones, etc.)
-  // Don't trim - preserve newlines and spacing
-  // Note: Preserve arrow characters (→ U+2192, ← U+2190, etc.) as they're used in log patterns like "APP → HA"
-  // Remove arrow ranges but exclude the specific arrows we use
-  return text
-    .replace(/[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|[\u{1F900}-\u{1F9FF}]|[\u{1F1E0}-\u{1F1FF}]|[\u{1F600}-\u{1F64F}]|[\u{1F680}-\u{1F6FF}]|[\u{24C2}-\u{1F251}]|[\u{2300}-\u{23FF}]|[\u{2B50}-\u{2B55}]/gu, '')
-    .replace(/[\u{2190}-\u{2191}]|[\u{2193}-\u{2199}]|[\u{219B}-\u{21FF}]/gu, ''); // Remove arrows except → (U+2192)
+export type LogLevel = 'normal' | 'debug';
+
+/**
+ * Get current log level from localStorage or default to 'normal'
+ */
+function getCurrentLogLevel(): LogLevel {
+  const stored = localStorage.getItem('debug_log_level');
+  return (stored === 'normal' || stored === 'debug') ? stored : 'normal';
+}
+
+/**
+ * Set current log level in localStorage
+ */
+export function setLogLevel(level: LogLevel): void {
+  localStorage.setItem('debug_log_level', level);
+}
+
+/**
+ * Get current log level (exported for external use)
+ */
+export function getLogLevel(): LogLevel {
+  return getCurrentLogLevel();
 }
 
 /**
@@ -60,17 +68,40 @@ function isNewLogEntryLine(line: string): boolean {
 }
 
 /**
- * Create a UI logger function that appends messages to a textarea element
- * Automatically adds timestamps to new log entries and removes emojis
- * Automatically scrolls to the bottom after each message
- * @param uiElement Optional HTMLTextAreaElement to log to
- * @returns A function that takes a message string and appends it to the UI element
+ * Maximum log size in characters (100KB)
+ * When exceeded, oldest entries are removed to keep log manageable
  */
-export function createUILogger(uiElement?: HTMLTextAreaElement): (message: string) => void {
-  return (message: string) => {
+const MAX_LOG_SIZE = 100 * 1024; // 100KB
+
+/**
+ * Percentage of log to keep when trimming (keep most recent 80%)
+ */
+const LOG_TRIM_PERCENTAGE = 0.8;
+
+/**
+ * Create a UI logger function that appends messages to a textarea element
+ * Automatically adds timestamps to new log entries
+ * Automatically scrolls to the bottom after each message
+ * Filters messages based on current log level setting
+ * Automatically trims log when it exceeds MAX_LOG_SIZE
+ * @param uiElement Optional HTMLTextAreaElement to log to
+ * @returns A function that takes a message string and optional log level, and appends it to the UI element
+ */
+export function createUILogger(uiElement?: HTMLTextAreaElement): (message: string, level?: LogLevel) => void {
+  return (message: string, level: LogLevel = 'normal') => {
     if (uiElement) {
-      // Remove emojis from the message (preserves newlines)
-      let cleanedMessage = removeEmojis(message);
+      // Check log level - only show messages that match or are below current level
+      const currentLevel = getCurrentLogLevel();
+      
+      // If current level is 'normal', only show 'normal' messages
+      // If current level is 'debug', show both 'normal' and 'debug' messages
+      if (currentLevel === 'normal' && level === 'debug') {
+        return; // Skip debug messages when log level is normal
+      }
+      
+      // Continue with normal message processing
+      // Use message as-is (no emoji removal needed since source messages don't contain emojis)
+      let cleanedMessage = message;
       
       // Check if message starts with newline - indicates a new entry
       const startsWithNewline = cleanedMessage.startsWith('\n');
@@ -78,6 +109,25 @@ export function createUILogger(uiElement?: HTMLTextAreaElement): (message: strin
       // Ensure previous content ends with newline if we're adding new content
       const currentContent = uiElement.value;
       const needsLeadingNewline = currentContent && !currentContent.endsWith('\n') && !startsWithNewline;
+      
+      // Check log size and trim if necessary (before adding new content)
+      let contentToUse = currentContent;
+      if (currentContent && currentContent.length > MAX_LOG_SIZE) {
+        // Trim log: keep most recent entries (last 80% of max size)
+        const targetSize = Math.floor(MAX_LOG_SIZE * LOG_TRIM_PERCENTAGE);
+        const trimmedContent = currentContent.slice(-targetSize);
+        
+        // Find the first complete log entry (after a newline with timestamp pattern)
+        // This ensures we don't cut in the middle of an entry
+        const firstNewlineIndex = trimmedContent.indexOf('\n[');
+        if (firstNewlineIndex > 0 && firstNewlineIndex < trimmedContent.length) {
+          contentToUse = trimmedContent.slice(firstNewlineIndex);
+          // Add a marker to indicate log was trimmed
+          contentToUse = `\n[${formatTimestamp()}] LOG TRIMMED (oldest entries removed to prevent excessive memory usage)\n${contentToUse}`;
+        } else {
+          contentToUse = trimmedContent;
+        }
+      }
       
       // Split message into lines to process each line individually
       const lines = cleanedMessage.split('\n');
@@ -127,9 +177,20 @@ export function createUILogger(uiElement?: HTMLTextAreaElement): (message: strin
       
       cleanedMessage = processedLines.join('\n');
       
-      uiElement.value = currentContent + cleanedMessage;
+      // Update content (using trimmed content if log was too large)
+      uiElement.value = contentToUse + cleanedMessage;
       uiElement.scrollTop = uiElement.scrollHeight;
     }
   };
+}
+
+/**
+ * Clear the log textarea
+ * @param uiElement Optional HTMLTextAreaElement to clear
+ */
+export function clearLog(uiElement?: HTMLTextAreaElement): void {
+  if (uiElement) {
+    uiElement.value = '';
+  }
 }
 

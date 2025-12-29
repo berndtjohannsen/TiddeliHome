@@ -3,7 +3,7 @@ import { GoogleGenAI, Modality, StartSensitivity, EndSensitivity } from '@google
 import { pcmToGeminiBlob } from './utils/audioUtils';
 import { buildSystemInstruction as buildSystemInstructionUtil, buildTools as buildToolsUtil } from './utils/geminiConfigBuilder';
 import { executeHAServiceCall as executeHAServiceCallApi, getHAEntityState as getHAEntityStateApi } from './api/haRestApi';
-import { createUILogger } from './utils/uiLogger';
+import { createUILogger, clearLog } from './utils/uiLogger';
 import { loadConfig } from './utils/configLoader';
 import configData from '../config/config.json';
 import { getHAWebSocketUrl } from './utils/haUrlBuilder';
@@ -30,8 +30,7 @@ let config = loadConfig();
   
   console.log('🧪 Testing WebSocket connection:');
   console.log('  URL:', wsUrl);
-  console.log('  Token length:', testToken?.length || 0);
-  console.log('  Token preview:', testToken ? `${testToken.substring(0, 10)}...` : 'MISSING');
+  console.log('  Token: ' + (testToken ? 'Set' : 'MISSING')); // Security: Never log token details
   
   const ws = new WebSocket(wsUrl);
   
@@ -116,22 +115,21 @@ let haSaveTimeout: number | null = null;
 let hasUnsavedHAChanges = false;
 const aiFunctionCalls = document.getElementById('ai-function-calls') as HTMLTextAreaElement | null;
 const copyLogBtn = document.getElementById('copy-log-btn') as HTMLButtonElement | null;
+const clearLogBtn = document.getElementById('clear-log-btn') as HTMLButtonElement | null;
+const debugLogLevelSelect = document.getElementById('debug-log-level') as HTMLSelectElement | null;
 
 // Debug: Log the final config to debug log UI (after UI elements are available)
 if (aiFunctionCalls) {
   const logToUI = createUILogger(aiFunctionCalls);
-  logToUI(`\nCONFIG LOADED\n`);
-  logToUI(`Home Assistant Configuration:\n`);
-  logToUI(`   Base URL: ${config.homeAssistant.baseUrl || 'Not set'}\n`);
-  logToUI(`   Access Token: ${config.homeAssistant.accessToken ? 'Set (' + config.homeAssistant.accessToken.length + ' chars)' : 'Missing'}\n`);
-  if (config.homeAssistant.accessToken) {
-    logToUI(`   Token Preview: ${config.homeAssistant.accessToken.substring(0, 10)}...\n`);
-  }
-  logToUI(`   Enabled: ${config.features?.homeAssistant?.enabled !== false ? 'Yes' : 'No'}\n`);
-  logToUI(`   Timeout: ${config.features?.homeAssistant?.timeout || config.homeAssistant.timeout || 30000}ms\n`);
-  logToUI(`   WebSocket Timeout: ${config.features?.homeAssistant?.webSocketConnectionTimeout || config.homeAssistant.webSocketConnectionTimeout || 5000}ms\n`);
+  logToUI(`\nCONFIG LOADED\n`, 'normal');
+  logToUI(`Home Assistant Configuration:\n`, 'normal');
+  logToUI(`   Base URL: ${config.homeAssistant.baseUrl || 'Not set'}\n`, 'normal');
+  logToUI(`   Access Token: ${config.homeAssistant.accessToken ? 'Set' : 'Missing'}\n`, 'normal'); // Security: Never log token details
+  logToUI(`   Enabled: ${config.features?.homeAssistant?.enabled !== false ? 'Yes' : 'No'}\n`, 'normal');
+  logToUI(`   Timeout: ${config.features?.homeAssistant?.timeout || config.homeAssistant.timeout || 30000}ms\n`, 'debug'); // Detailed config is debug level
+  logToUI(`   WebSocket Timeout: ${config.features?.homeAssistant?.webSocketConnectionTimeout || config.homeAssistant.webSocketConnectionTimeout || 5000}ms\n`, 'debug'); // Detailed config is debug level
   const domains = config.features?.homeAssistant?.functionCalling?.domains || [];
-  logToUI(`   Allowed Domains: ${domains.length > 0 ? domains.join(', ') : 'All domains'}\n`);
+  logToUI(`   Allowed Domains: ${domains.length > 0 ? domains.join(', ') : 'All domains'}\n`, 'normal');
 }
 
 // HA config and states are now stored in appState
@@ -193,7 +191,7 @@ function setVolume(volume: number) {
     appState.volumeGainNode.gain.value = volumePercent;
     console.log(`Volume changed to ${volume}% (${volumePercent}), gain node updated`);
   } else {
-    console.log(`Volume changed to ${volume}% (${volumePercent}), saved to localStorage (gain node not yet created - will apply on connect)`);
+    // Volume change - no need to log
   }
 }
 
@@ -294,6 +292,29 @@ async function copyLogToClipboard() {
 // Set up copy button click handler
 if (copyLogBtn) {
   copyLogBtn.addEventListener('click', copyLogToClipboard);
+}
+
+// Set up clear log button click handler
+if (clearLogBtn && aiFunctionCalls) {
+  clearLogBtn.addEventListener('click', () => {
+    if (confirm('Are you sure you want to clear the debug log?')) {
+      clearLog(aiFunctionCalls);
+    }
+  });
+}
+
+// Initialize debug log level selector
+if (debugLogLevelSelect) {
+  // Load saved log level or default to 'normal'
+  const savedLevel = localStorage.getItem('debug_log_level') || 'normal';
+  debugLogLevelSelect.value = savedLevel;
+  
+  // Listen for changes and save to localStorage
+  debugLogLevelSelect.addEventListener('change', (e) => {
+    const selectedLevel = (e.target as HTMLSelectElement).value as 'normal' | 'debug';
+    localStorage.setItem('debug_log_level', selectedLevel);
+    // Note: Changing log level doesn't filter existing messages, only affects new messages
+  });
 }
 
 /**
@@ -570,10 +591,12 @@ async function connectToGemini() {
   }
 
   try {
-    console.log('Starting connection...', {
-      apiKey: config.gemini.apiKey ? `${config.gemini.apiKey.substring(0, 10)}...` : 'missing',
-      model: config.gemini.model
-    });
+    if (aiFunctionCalls) {
+      const logToUI = createUILogger(aiFunctionCalls);
+      logToUI(`\nStarting Gemini Connection\n`, 'normal');
+      logToUI(`   Model: ${config.gemini.model}\n`, 'normal');
+      logToUI(`   API Key: ${config.gemini.apiKey ? 'Set' : 'Missing'}\n`, 'normal');
+    }
     updateUI(true, 'Connecting...');
 
     // Initialize Audio Contexts
@@ -584,8 +607,11 @@ async function connectToGemini() {
       sampleRate: OUTPUT_SAMPLE_RATE 
     });
 
-    console.log(`Created inputAudioContext with actual sample rate: ${appState.inputAudioContext.sampleRate} Hz`);
-    console.log(`Created outputAudioContext with actual sample rate: ${appState.outputAudioContext.sampleRate} Hz`);
+    if (aiFunctionCalls) {
+      const logToUI = createUILogger(aiFunctionCalls);
+      logToUI(`   Input Audio Context: ${appState.inputAudioContext.sampleRate} Hz\n`, 'debug');
+      logToUI(`   Output Audio Context: ${appState.outputAudioContext.sampleRate} Hz\n`, 'debug');
+    }
 
     // Create gain node for volume control and connect to destination
     const savedVolume = parseFloat(localStorage.getItem('tiddelihome_volume') || '80');
@@ -607,9 +633,12 @@ async function connectToGemini() {
       // Check what sample rate we actually got
       const audioTrack = appState.stream.getAudioTracks()[0];
       const actualSettings = audioTrack.getSettings();
-      console.log('Microphone access granted');
-      console.log('Requested sample rate: 16000 Hz (ideal)');
-      console.log('Actual sample rate from MediaStream:', actualSettings.sampleRate || 'unknown');
+      if (aiFunctionCalls) {
+        const logToUI = createUILogger(aiFunctionCalls);
+        logToUI(`   Microphone access granted\n`, 'normal');
+        logToUI(`   Requested sample rate: 16000 Hz (ideal)\n`, 'debug');
+        logToUI(`   Actual sample rate: ${actualSettings.sampleRate || 'unknown'} Hz\n`, 'debug');
+      }
       
       updateUI(true, 'Setting up connection...');
     } catch (mediaError: any) {
@@ -644,7 +673,12 @@ async function connectToGemini() {
       apiKey: config.gemini.apiKey,
       ...(httpOptions && { httpOptions })
     });
-    console.log('GoogleGenAI initialized', httpOptions ? `(using ${httpOptions.apiVersion} API)` : '');
+    if (aiFunctionCalls) {
+      const logToUI = createUILogger(aiFunctionCalls);
+      if (httpOptions) {
+        logToUI(`   Using API version: ${httpOptions.apiVersion}\n`, 'debug');
+      }
+    }
 
     // Build tools array
     const tools = buildTools();
@@ -671,7 +705,11 @@ async function connectToGemini() {
     if (config.gemini.enableAffectiveDialog) {
       // Set enableAffectiveDialog at top level (SDK will handle internal mapping)
       connectConfig.enableAffectiveDialog = true;
-      console.log('⚠️ Affective Dialog enabled - Note: This feature may have compatibility constraints');
+      if (aiFunctionCalls) {
+        const logToUI = createUILogger(aiFunctionCalls);
+        logToUI(`   Affective Dialog enabled\n`, 'normal');
+        logToUI(`   Note: This feature may have compatibility constraints\n`, 'normal');
+      }
       if (aiFunctionCalls) {
         const logToUI = createUILogger(aiFunctionCalls);
         logToUI(`\nAffective Dialog enabled\n`);
@@ -804,17 +842,26 @@ async function connectToGemini() {
       config: connectConfig,
       callbacks: {
         onopen: () => {
-          console.log('Gemini Live Connected - onopen callback');
+          if (aiFunctionCalls) {
+            const logToUI = createUILogger(aiFunctionCalls);
+            logToUI(`\nGemini Live Connected\n`, 'normal');
+          }
           
           // Wait for session promise to resolve
           if (!appState.sessionPromise) {
-            console.error('No session promise available');
+            if (aiFunctionCalls) {
+              const logToUI = createUILogger(aiFunctionCalls);
+              logToUI(`   Error: No session promise available\n`, 'normal');
+            }
             return;
           }
 
           appState.sessionPromise.then(async (s: any) => {
-            console.log('Session promise resolved, session:', s);
-            console.log('Session methods:', Object.keys(s || {}));
+            if (aiFunctionCalls) {
+              const logToUI = createUILogger(aiFunctionCalls);
+              logToUI(`   Session established\n`, 'debug');
+              logToUI(`   Session methods: ${Object.keys(s || {}).join(', ')}\n`, 'debug');
+            }
             appState.session = s;
             sessionRef.value = s; // Update session ref for message handler
             if (!appState.session || !appState.inputAudioContext || !appState.stream) {
@@ -850,7 +897,10 @@ async function connectToGemini() {
                   } catch (error) {
                     // Silently ignore errors if connection is closing/closed
                     if (error instanceof Error && !error.message.includes('CLOSING') && !error.message.includes('CLOSED')) {
-                      console.error('Error sending audio:', error);
+                      if (aiFunctionCalls) {
+                        const logToUI = createUILogger(aiFunctionCalls);
+                        logToUI(`   Error sending audio: ${error instanceof Error ? error.message : String(error)}\n`, 'normal');
+                      }
                     }
                   }
                 }
@@ -866,10 +916,11 @@ async function connectToGemini() {
               appState.processor.connect(gainNode);
               gainNode.connect(appState.inputAudioContext.destination);
               
-              console.log('Audio pipeline connected:', {
-                contextSampleRate: appState.inputAudioContext.sampleRate,
-                usingSampleRate: appState.inputAudioContext.sampleRate
-              });
+              if (aiFunctionCalls) {
+                const logToUI = createUILogger(aiFunctionCalls);
+                logToUI(`   Audio pipeline connected\n`, 'normal');
+                logToUI(`   Sample rate: ${appState.inputAudioContext.sampleRate} Hz\n`, 'debug');
+              }
               
               updateUI(true, 'Listening...');
               
@@ -884,12 +935,18 @@ async function connectToGemini() {
                     turnComplete: true
                   });
                 } catch (error) {
-                  console.error('Error sending initial greeting:', error);
+                  if (aiFunctionCalls) {
+                    const logToUI = createUILogger(aiFunctionCalls);
+                    logToUI(`   Error sending initial greeting: ${error instanceof Error ? error.message : String(error)}\n`, 'normal');
+                  }
                   // Don't disconnect on greeting error - connection is still valid
                 }
               }
             } catch (error) {
-              console.error('Error setting up audio:', error);
+              if (aiFunctionCalls) {
+              const logToUI = createUILogger(aiFunctionCalls);
+              logToUI(`   Error setting up audio: ${error instanceof Error ? error.message : String(error)}\n`, 'normal');
+            }
               updateUI(false, 'Error setting up audio');
               disconnect();
             }
@@ -901,9 +958,8 @@ async function connectToGemini() {
         },
         onmessage: createMessageHandler(messageHandlerContext),
         onclose: (event) => {
-          console.log('Gemini Live Closed', event);
-          // Only log stack trace in development mode or for unexpected closures
-          if (import.meta.env.DEV || (event.code !== 1000 && event.code !== 1001)) {
+          // Stack trace only in dev mode for unexpected closures
+          if (import.meta.env.DEV && event.code !== 1000 && event.code !== 1001) {
             console.trace('Close stack trace');
           }
           
@@ -957,10 +1013,19 @@ async function connectToGemini() {
           }
         },
         onerror: (err) => {
-          console.error('Gemini Live Error', err);
-          console.error('Error details:', JSON.stringify(err, null, 2));
           appState.session = null;
           const errorMsg = err instanceof Error ? err.message : String(err);
+          if (aiFunctionCalls) {
+            const logToUI = createUILogger(aiFunctionCalls);
+            logToUI(`\nGemini Live Error\n`, 'normal');
+            logToUI(`   Error: ${errorMsg}\n`, 'normal');
+            try {
+              const errorDetails = JSON.stringify(err, null, 2);
+              logToUI(`   Details: ${errorDetails}\n`, 'debug');
+            } catch (e) {
+              logToUI(`   Details: ${String(err)}\n`, 'debug');
+            }
+          }
           updateUI(false, `Connection error: ${errorMsg}`);
           // Auto-disconnect on error (100ms delay to allow error logging)
           setTimeout(() => disconnect(), 100);
@@ -969,7 +1034,11 @@ async function connectToGemini() {
     });
 
   } catch (e) {
-    console.error(e);
+    if (aiFunctionCalls) {
+      const logToUI = createUILogger(aiFunctionCalls);
+      logToUI(`\nConnection Error\n`, 'normal');
+      logToUI(`   ${e instanceof Error ? e.message : String(e)}\n`, 'normal');
+    }
     updateUI(false, `Error: ${e instanceof Error ? e.message : 'Failed to connect'}`);
   }
 }
@@ -1031,6 +1100,11 @@ function disconnect() {
     }
   });
   appState.audioSources.clear();
+  
+  // Hide AI speaking indicator when disconnecting
+  if (aiSpeakingIndicator) {
+    aiSpeakingIndicator.classList.add('hidden');
+  }
 
   // Close session
   if (appState.session && typeof appState.session.close === 'function') {
@@ -1072,15 +1146,30 @@ if (volumeSlider) {
   volumeSlider.addEventListener('change', handleVolumeChange); // Also listen to change event for better compatibility
   volumeSlider.addEventListener('click', handleVolumeSliderClick); // Handle track clicks for mute/max
   updateVolumeMuteButtonState(savedVolume); // Initialize mute button state
-  console.log('Volume slider initialized with value:', savedVolume);
+  // Volume slider initialization - no need to log
 } else {
-  console.error('Volume slider element not found!');
+  // Volume slider not found - non-critical, no need to log
 }
 
 // Initialize volume mute button
 if (volumeMuteButton) {
   volumeMuteButton.addEventListener('click', toggleVolumeMute);
 }
+
+// Get reference to AI speaking indicator
+const aiSpeakingIndicator = document.getElementById('ai-speaking-indicator') as HTMLDivElement | null;
+
+// Simple polling to check if AI is speaking
+setInterval(() => {
+  if (!aiSpeakingIndicator) return;
+  
+  const isSpeaking = appState.audioSources.size > 0;
+  if (isSpeaking) {
+    aiSpeakingIndicator.classList.remove('hidden');
+  } else {
+    aiSpeakingIndicator.classList.add('hidden');
+  }
+}, 100); // Check every 100ms
 
 // Initialize
 micButton.addEventListener('click', toggleConnection);
@@ -1168,15 +1257,13 @@ window.addEventListener('beforeinstallprompt', (e) => {
   // Show install button when prompt is available
   if (installIcon) {
     installIcon.classList.remove('js-hidden');
-    console.log('✅ Install prompt available - install button visible');
-  } else {
-    console.log('Install icon element not found');
+    // Install prompt available - button visible
   }
   
   // If we were retrying after reload, show a message
   if (sessionStorage.getItem('retryInstall') === 'true') {
     sessionStorage.removeItem('retryInstall');
-    console.log('✅ Install prompt now available after reload');
+    // Install prompt now available after reload
   }
 }, { once: false, passive: false });
 
@@ -1186,7 +1273,7 @@ document.addEventListener('beforeinstallprompt', (e) => {
   deferredPrompt = e;
   if (installIcon) {
     installIcon.classList.remove('js-hidden');
-    console.log('✅ Install prompt available (from document listener)');
+    // Install prompt available (from document listener)
   }
 }, { once: false, passive: false });
 
@@ -1198,9 +1285,7 @@ setTimeout(() => {
     // Keep button visible - user can click for manual installation instructions
     // Even if beforeinstallprompt didn't fire, the app might be installable
     if (!deferredPrompt) {
-      console.log('ℹ️ beforeinstallprompt event did not fire, but app may still be installable');
-      console.log('Install button remains visible - click for installation options');
-      console.log('Also check browser address bar for install icon (➕)');
+      // beforeinstallprompt event did not fire, but app may still be installable
     }
     // Don't hide the button - let user try manual installation
   }
@@ -1213,7 +1298,7 @@ window.addEventListener('appinstalled', () => {
     installIcon.classList.add('js-hidden');
   }
   deferredPrompt = null;
-  console.log('PWA installed');
+  // PWA installed
 });
 
 // Check if app is already installed (standalone mode)
@@ -1226,13 +1311,13 @@ if (isStandalone) {
   if (installIcon) {
     installIcon.classList.add('js-hidden');
   }
-  console.log('PWA already installed (standalone mode) - install button hidden');
+  // PWA already installed (standalone mode) - install button hidden
 } else {
   // Not in standalone mode - show install button by default
   // It will be hidden if beforeinstallprompt doesn't fire and app is not installable
   if (installIcon) {
     installIcon.classList.remove('js-hidden');
-    console.log('PWA not installed - install button shown');
+    // PWA not installed - install button shown
   }
 }
 
@@ -1256,7 +1341,7 @@ async function checkInstallability(): Promise<{ installable: boolean; reasons: s
   } else {
     try {
       const manifestUrl = (manifestLink as HTMLLinkElement).href;
-      console.log('Fetching manifest from:', manifestUrl);
+      // Fetching manifest
       const response = await fetch(manifestUrl);
       if (!response.ok) {
         installable = false;
@@ -1264,11 +1349,11 @@ async function checkInstallability(): Promise<{ installable: boolean; reasons: s
       } else {
         const contentType = response.headers.get('content-type');
         if (!contentType || !contentType.includes('application/manifest+json') && !contentType.includes('application/json')) {
-          console.warn('Manifest content-type may be incorrect:', contentType);
+          // Manifest content-type may be incorrect
         }
         
         const manifest = await response.json();
-        console.log('Manifest loaded:', manifest);
+        // Manifest loaded
         
         // Check for required fields
         if (!manifest.name && !manifest.short_name) {
@@ -1295,7 +1380,7 @@ async function checkInstallability(): Promise<{ installable: boolean; reasons: s
           for (const icon of manifest.icons) {
             try {
               const iconUrl = icon.src.startsWith('/') ? icon.src : new URL(icon.src, window.location.origin).pathname;
-              console.log('Checking icon:', iconUrl);
+              // Checking icon
               const iconResponse = await fetch(iconUrl, { method: 'HEAD' });
               if (!iconResponse.ok) {
                 installable = false;
@@ -1352,11 +1437,8 @@ async function checkInstallability(): Promise<{ installable: boolean; reasons: s
 if (installIcon) {
   installIcon.addEventListener('click', async () => {
     if (!deferredPrompt) {
-      console.log('⚠️ No install prompt available - checking installability...');
-      
       // Check installability
       const check = await checkInstallability();
-      console.log('Installability check result:', check);
       
       // Build message
       let message = 'Install prompt not available.\n\n';
@@ -1479,7 +1561,7 @@ if (installIcon) {
       // Wait for the user to respond to the prompt
       const { outcome } = await deferredPrompt.userChoice;
       
-      console.log(`User response to install prompt: ${outcome}`);
+      // User response to install prompt: ${outcome}
       
       // Clear the deferredPrompt variable
       deferredPrompt = null;
@@ -1489,7 +1571,11 @@ if (installIcon) {
         installIcon.classList.add('js-hidden');
       }
     } catch (error) {
-      console.error('Error showing install prompt:', error);
+      if (aiFunctionCalls) {
+        const logToUI = createUILogger(aiFunctionCalls);
+        logToUI(`\nInstall Error\n`, 'normal');
+        logToUI(`   Error showing install prompt: ${error instanceof Error ? error.message : String(error)}\n`, 'normal');
+      }
       alert('Error showing install prompt. Please try using your browser\'s install option (usually in the address bar or menu).');
     }
   });
@@ -1510,7 +1596,11 @@ let isRegistering = false; // Flag to prevent multiple simultaneous registration
 // the certificate is accepted before attempting registration
 async function preFetchServiceWorkerFile(): Promise<boolean> {
   try {
-    console.log('Pre-fetching service worker file to verify certificate acceptance...');
+    if (aiFunctionCalls) {
+      const logToUI = createUILogger(aiFunctionCalls);
+      logToUI(`\nService Worker Pre-fetch\n`, 'debug');
+      logToUI(`   Pre-fetching service worker file to verify certificate acceptance...\n`, 'debug');
+    }
     const preFetchResponse = await fetch('/service-worker.js', {
       method: 'GET',
       cache: 'no-store',
@@ -1518,15 +1608,24 @@ async function preFetchServiceWorkerFile(): Promise<boolean> {
     });
     
     if (preFetchResponse.ok) {
-      console.log('✅ Service worker file is accessible (status: ' + preFetchResponse.status + ')');
+      if (aiFunctionCalls) {
+        const logToUI = createUILogger(aiFunctionCalls);
+        logToUI(`   Service worker file accessible (status: ${preFetchResponse.status})\n`, 'debug');
+      }
       // Read the response to ensure it's fully loaded
       await preFetchResponse.text();
-      console.log('✅ Service worker file content loaded successfully');
+      if (aiFunctionCalls) {
+        const logToUI = createUILogger(aiFunctionCalls);
+        logToUI(`   Service worker file content loaded successfully\n`, 'debug');
+      }
       // Small delay to ensure certificate state is settled (especially on mobile)
       await new Promise(resolve => setTimeout(resolve, 500));
       return true;
     } else {
-      console.warn('⚠️ Service worker file returned status: ' + preFetchResponse.status);
+      if (aiFunctionCalls) {
+        const logToUI = createUILogger(aiFunctionCalls);
+        logToUI(`   Warning: Service worker file returned status: ${preFetchResponse.status}\n`, 'normal');
+      }
       return false;
     }
   } catch (preFetchError: any) {
@@ -1534,11 +1633,14 @@ async function preFetchServiceWorkerFile(): Promise<boolean> {
                        preFetchError?.message?.includes('SSL') ||
                        preFetchError?.name === 'TypeError' && preFetchError?.message?.includes('Failed to fetch');
     
-    if (isCertError) {
-      console.warn('⚠️ Certificate not accepted for service worker file');
-      console.warn('Please accept the certificate and reload the page');
-    } else {
-      console.warn('Pre-fetch had non-certificate error:', preFetchError?.message);
+    if (aiFunctionCalls) {
+      const logToUI = createUILogger(aiFunctionCalls);
+      if (isCertError) {
+        logToUI(`   Warning: Certificate not accepted for service worker file\n`, 'normal');
+        logToUI(`   Please accept the certificate and reload the page\n`, 'normal');
+      } else {
+        logToUI(`   Warning: Pre-fetch error: ${preFetchError?.message || String(preFetchError)}\n`, 'normal');
+      }
     }
     return false;
   }
@@ -1596,18 +1698,11 @@ function resetUpdateFlags(): void {
 async function setupServiceWorker() {
   if (!registration) return;
   
-  console.log('Service Worker registered successfully:', registration.scope);
-  console.log('App version:', APP_VERSION);
-  
-  // After service worker registration, check install button state
-  // The beforeinstallprompt event should fire if the app is installable
-  console.log('Install button state after SW registration:', {
-    elementExists: !!installIcon,
-    isHidden: installIcon?.classList.contains('js-hidden'),
-    hasDeferredPrompt: !!deferredPrompt,
-    isStandalone: isStandalone,
-    serviceWorkerRegistered: !!registration
-  });
+  if (aiFunctionCalls) {
+    const logToUI = createUILogger(aiFunctionCalls);
+    logToUI(`   Scope: ${registration.scope}\n`, 'debug');
+    logToUI(`   App version: ${APP_VERSION}\n`, 'debug');
+  }
   
   // Note: The beforeinstallprompt event may fire immediately or after a delay
   // It may also not fire if the user previously dismissed the install prompt
@@ -1616,7 +1711,10 @@ async function setupServiceWorker() {
   // Check if service worker is controlling the page
   // This is required for beforeinstallprompt to fire
   if (navigator.serviceWorker.controller) {
-    console.log('✅ Service worker is controlling the page - install prompt should be available');
+    if (aiFunctionCalls) {
+      const logToUI = createUILogger(aiFunctionCalls);
+      logToUI(`   Service worker is controlling the page\n`, 'debug');
+    }
     
     // Additional check: verify manifest is valid
     setTimeout(async () => {
@@ -1732,16 +1830,21 @@ async function setupServiceWorker() {
       
       // Check if there's a waiting worker
       if (registration.waiting) {
-        console.log('Found waiting service worker, showing update prompt');
+        if (aiFunctionCalls) {
+          const logToUI = createUILogger(aiFunctionCalls);
+          logToUI(`   Found waiting service worker, showing update prompt\n`, 'normal');
+        }
         // Store the active worker's version before showing the prompt
         // This ensures we show the old version, not the new one
         if (!activeSWVersionBeforeUpdate && currentSWVersion) {
           activeSWVersionBeforeUpdate = currentSWVersion;
-          console.log('Stored active worker version before update:', activeSWVersionBeforeUpdate);
         }
         // If we don't have a version yet, wait a moment for it to be retrieved
         if (!currentSWVersion && registration.active) {
-          console.log('Waiting for service worker version before showing prompt...');
+          if (aiFunctionCalls) {
+            const logToUI = createUILogger(aiFunctionCalls);
+            logToUI(`   Waiting for service worker version...\n`, 'debug');
+          }
           // Request version from active worker
           const messageChannel = new MessageChannel();
           messageChannel.port1.onmessage = (event) => {
@@ -1767,7 +1870,10 @@ async function setupServiceWorker() {
       
       // If no waiting worker, check if one is installing
       if (registration.installing) {
-        console.log('Service worker is installing, will show prompt when ready');
+        if (aiFunctionCalls) {
+          const logToUI = createUILogger(aiFunctionCalls);
+          logToUI(`   Service worker is installing, will show prompt when ready\n`, 'debug');
+        }
         isCheckingForUpdate = false;
         // The updatefound event will handle it
         return;
@@ -1776,7 +1882,10 @@ async function setupServiceWorker() {
       // If version mismatch but no waiting/installing worker, 
       // the browser might not have fetched the new file yet
       // Force fetch the service worker file to trigger update detection
-      console.log('Version mismatch but no waiting worker - forcing service worker file fetch');
+      if (aiFunctionCalls) {
+        const logToUI = createUILogger(aiFunctionCalls);
+        logToUI(`   Version mismatch but no waiting worker - forcing fetch\n`, 'debug');
+      }
       
       // Fetch the service worker file with cache busting to force browser to check
       fetch('/service-worker.js?v=' + APP_VERSION + '&t=' + Date.now(), { 

@@ -328,7 +328,7 @@
             </div>
             
             <div class="mb-6 js-hidden" id="ha-config-summary-section">
-                <label class="block text-gray-900 text-sm mb-2 text-left font-medium">Extracted Configuration Summary:</label>
+                <div class="block text-gray-900 text-sm mb-2 text-left font-medium">Extracted Configuration Summary:</div>
                 <div id="ha-config-summary" class="ha-config-summary"></div>
             </div>
 
@@ -467,21 +467,31 @@
         <div class="settings-tab-content" id="debug-tab">
             <div class="mb-6">
                 <div class="flex justify-between items-center mb-3">
-                    <label class="block text-gray-900 text-sm text-left font-medium" for="ai-function-calls">
-                        Debug:
-                    </label>
-                    <button id="copy-log-btn" class="btn-primary btn-blue py-2 px-4">
-                        📋 Copy
-                    </button>
+                    
+                    <div class="flex items-center gap-3">
+                        <label class="flex items-center text-gray-900 text-sm cursor-pointer" for="debug-log-level">
+                            <span class="mr-2">Log Level:</span>
+                            <select id="debug-log-level" class="text-sm border border-gray-300 rounded px-2 py-1 bg-white text-gray-900 focus:outline-none focus:border-blue-500">
+                                <option value="normal">Normal</option>
+                                <option value="debug">Debug</option>
+                            </select>
+                        </label>
+                        <button id="clear-log-btn" class="btn-primary btn-red py-2 px-4">
+                            🗑️ Clear Log
+                        </button>
+                        <button id="copy-log-btn" class="btn-primary btn-blue py-2 px-4">
+                            📋 Copy
+                        </button>
+                    </div>
                 </div>
                 <textarea 
                     id="ai-function-calls" 
                     class="settings-textarea" 
-                    placeholder='AI function calls will appear here when the AI tries to control Home Assistant...'
+                    placeholder='Debug log will appear here...'
                     readonly
                 ></textarea>
                 <p class="text-xs text-gray-600 mt-2 text-left leading-relaxed">
-                    This shows the function calls that the AI generates. These will be sent to Home Assistant REST API.
+                    Shows application logs. Use "Normal" for essential information, "Debug" for detailed technical logs.
                 </p>
             </div>
         </div>
@@ -498,6 +508,10 @@
         <h1 class="text-4xl mb-8 font-normal text-white tracking-tight md:text-3xl">TiddeliHome</h1>
             <button id="mic-button" class="mic-button" aria-label="Phone call"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" class="w-10 h-10 fill-black md:w-9 md:h-9"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg></button>
             <p id="status-text" class="text-sm mt-2 text-white/70 font-normal md:text-xs">Ready - Click to start call</p>
+            <div id="ai-speaking-indicator" class="ai-speaking-indicator hidden">
+                <span class="ai-speaking-dot"></span>
+                <span class="ai-speaking-text">AI speaking</span>
+            </div>
             <button id="mute-button" class="mute-button min-w-12 h-12 w-12 rounded-full border-none bg-white/10 text-white cursor-pointer shadow-[0_2px_4px_rgba(0,0,0,0.3)] transition-all duration-200 items-center justify-center m-2 mx-auto mt-2 p-0 relative hover:bg-white/20 active:bg-white/15 md:w-11 md:h-11 md:min-w-11" aria-label="Mute microphone">
             <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" class="mute-icon-svg w-8 h-8 fill-white md:w-7 md:h-7">
                 <!-- Microphone icon -->

@@ -85,30 +85,7 @@ export function loadConfig(): AppConfig {
   const userConfigStr = localStorage.getItem('tiddelihome_config');
   const userConfig = userConfigStr ? JSON.parse(userConfigStr) : null;
   
-  // Debug: Log what we're loading
-  if (userConfig) {
-    const haConfigSource = userConfig.features?.homeAssistant || userConfig.homeAssistant;
-    console.log('Loading config from localStorage:', {
-      hasBaseUrl: !!haConfigSource?.baseUrl,
-      baseUrl: haConfigSource?.baseUrl,
-      hasAccessToken: !!haConfigSource?.accessToken,
-      accessTokenLength: haConfigSource?.accessToken?.length || 0
-    });
-  } else {
-    console.log('No localStorage config found, using defaults');
-  }
-  
-  // Debug: Log what we're getting from each source
-  const configJsonHA = configData.features?.homeAssistant || configData.homeAssistant;
-  console.log('Config sources:', {
-    fromLocalStorage: userConfig?.features?.homeAssistant || userConfig?.homeAssistant,
-    fromEnv: {
-      hasBaseUrl: !!import.meta.env.VITE_HA_BASE_URL,
-      baseUrl: import.meta.env.VITE_HA_BASE_URL ? '***' : undefined, // Don't log actual URL
-      hasAccessToken: !!import.meta.env.VITE_HA_ACCESS_TOKEN
-    },
-    fromConfigJson: configJsonHA
-  });
+  // Config loading - no need to log (config is logged when loaded in main.ts)
   
   // Get system instruction: user config > config.json default
   const systemInstruction = userConfig?.gemini?.systemInstruction || configData.gemini?.systemInstruction || '';
