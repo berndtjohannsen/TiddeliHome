@@ -441,7 +441,7 @@ export async function extractHAConfigFromHomeAssistant(
   statusElement.className = 'debug-extract-status loading';
 
   // Log to UI debug panel instead of console
-  const logToUI = logElement ? createUILogger(logElement) : null;
+  const logToUI: ((message: string, level?: 'normal' | 'debug') => void) | undefined = logElement ? createUILogger(logElement) : undefined;
 
   const seq = messageSequenceRef ? ++messageSequenceRef.value : 0;
   const timestamp = new Date().toISOString();
@@ -486,7 +486,7 @@ export async function extractHAConfigFromHomeAssistant(
     statusElement.textContent = `✅ Successfully extracted ${extractedConfig.entities.length} entities`;
     statusElement.className = 'debug-extract-status success';
     
-    const responseTimestamp = new Date().toISOString();
+    const _responseTimestamp = new Date().toISOString();
     if (logToUI) {
       logToUI(`\nHA → APP [#${seq}] (WebSocket)\n`, 'normal');
       logToUI(`Config extraction successful\n`, 'normal');
@@ -520,9 +520,11 @@ export async function extractHAConfigFromHomeAssistant(
     statusElement.textContent = `❌ Error: ${errorMsg}`;
     statusElement.className = 'debug-extract-status error';
     
-    const errorTimestamp = new Date().toISOString();
-    logToUI(`\nERROR [#${seq}]\n`);
-    logToUI(`   ${errorMsg}\n`);
+    const _errorTimestamp = new Date().toISOString();
+    if (logToUI) {
+      logToUI(`\nERROR [#${seq}]\n`, 'normal');
+      logToUI(`   ${errorMsg}\n`, 'normal');
+    }
     
     if (onError) {
       onError(errorMsg);

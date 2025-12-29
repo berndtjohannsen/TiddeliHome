@@ -180,8 +180,8 @@ export function loadConfig(): AppConfig {
       };
     }
     // Fall back to old structure for backward compatibility
-    if (userConfig?.audio || configData.audio) {
-      return userConfig?.audio || configData.audio || {
+    if (userConfig?.audio || (configData as any).audio) {
+      return userConfig?.audio || (configData as any).audio || {
         outputSampleRate: 24000
       };
     }

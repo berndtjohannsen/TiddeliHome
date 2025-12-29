@@ -765,13 +765,13 @@ async function connectToGemini() {
       // Map sensitivity strings to enum values
       const startSensitivityMap: Record<string, any> = {
         'START_SENSITIVITY_LOW': StartSensitivity.START_SENSITIVITY_LOW,
-        'START_SENSITIVITY_MEDIUM': StartSensitivity.START_SENSITIVITY_MEDIUM,
+        'START_SENSITIVITY_MEDIUM': StartSensitivity.START_SENSITIVITY_HIGH, // MEDIUM not available, use HIGH as fallback
         'START_SENSITIVITY_HIGH': StartSensitivity.START_SENSITIVITY_HIGH,
       };
       
       const endSensitivityMap: Record<string, any> = {
         'END_SENSITIVITY_LOW': EndSensitivity.END_SENSITIVITY_LOW,
-        'END_SENSITIVITY_MEDIUM': EndSensitivity.END_SENSITIVITY_MEDIUM,
+        'END_SENSITIVITY_MEDIUM': EndSensitivity.END_SENSITIVITY_HIGH, // MEDIUM not available, use HIGH as fallback
         'END_SENSITIVITY_HIGH': EndSensitivity.END_SENSITIVITY_HIGH,
       };
       
@@ -780,11 +780,11 @@ async function connectToGemini() {
       }
       
       if (config.gemini.vadConfig.startOfSpeechSensitivity) {
-        vadConfig.startOfSpeechSensitivity = startSensitivityMap[config.gemini.vadConfig.startOfSpeechSensitivity] || StartSensitivity.START_SENSITIVITY_MEDIUM;
+        vadConfig.startOfSpeechSensitivity = startSensitivityMap[config.gemini.vadConfig.startOfSpeechSensitivity] || StartSensitivity.START_SENSITIVITY_HIGH;
       }
       
       if (config.gemini.vadConfig.endOfSpeechSensitivity) {
-        vadConfig.endOfSpeechSensitivity = endSensitivityMap[config.gemini.vadConfig.endOfSpeechSensitivity] || EndSensitivity.END_SENSITIVITY_MEDIUM;
+        vadConfig.endOfSpeechSensitivity = endSensitivityMap[config.gemini.vadConfig.endOfSpeechSensitivity] || EndSensitivity.END_SENSITIVITY_HIGH;
       }
       
       if (config.gemini.vadConfig.prefixPaddingMs !== undefined) {
@@ -1757,18 +1757,18 @@ async function setupServiceWorker() {
     console.log('⚠️ Service worker is not controlling the page yet - waiting for activation...');
     
     // If there's a waiting or installing worker, it might be stuck
-    if (registration.waiting) {
+    if (registration?.waiting) {
       console.log('Found waiting service worker - activating it for PWA installability');
       registration.waiting.postMessage({ type: 'SKIP_WAITING' });
-    } else if (registration.installing) {
+    } else if (registration?.installing) {
       console.log('Service worker is installing - will activate when ready');
       registration.installing.addEventListener('statechange', () => {
-        if (registration.installing?.state === 'installed' && !navigator.serviceWorker.controller) {
+        if (registration?.installing?.state === 'installed' && !navigator.serviceWorker.controller) {
           console.log('Service worker installed but not active - activating...');
-          registration.installing.postMessage({ type: 'SKIP_WAITING' });
+          registration.installing?.postMessage({ type: 'SKIP_WAITING' });
         }
       });
-    } else if (registration.active && !navigator.serviceWorker.controller) {
+    } else if (registration?.active && !navigator.serviceWorker.controller) {
       // Service worker is active but not controlling - this shouldn't happen
       // Try to reload to get it to control
       console.log('Service worker is active but not controlling page - may need reload');
@@ -1828,12 +1828,13 @@ async function setupServiceWorker() {
     try {
       console.log('Checking for service worker update...');
       console.log('Current registration state:', {
-        active: !!registration.active,
-        installing: !!registration.installing,
-        waiting: !!registration.waiting,
+        active: !!registration?.active,
+        installing: !!registration?.installing,
+        waiting: !!registration?.waiting,
         controller: !!navigator.serviceWorker.controller
       });
       
+      if (!registration) return;
       await registration.update();
       
       // Check if there's a waiting worker
@@ -1848,7 +1849,7 @@ async function setupServiceWorker() {
           activeSWVersionBeforeUpdate = currentSWVersion;
         }
         // If we don't have a version yet, wait a moment for it to be retrieved
-        if (!currentSWVersion && registration.active) {
+        if (!currentSWVersion && registration?.active) {
           if (aiFunctionCalls) {
             const logToUI = createUILogger(aiFunctionCalls);
             logToUI(`   Waiting for service worker version...\n`, 'debug');
@@ -1862,12 +1863,12 @@ async function setupServiceWorker() {
                 activeSWVersionBeforeUpdate = currentSWVersion;
               }
               updateDisplayedVersion(currentSWVersion);
-              waitingWorker = registration.waiting;
+              waitingWorker = registration?.waiting || null;
               isCheckingForUpdate = false;
               showUpdatePrompt();
             }
           };
-          registration.active.postMessage({ type: 'GET_VERSION' }, [messageChannel.port2]);
+          registration.active?.postMessage({ type: 'GET_VERSION' }, [messageChannel.port2]);
           return;
         }
         waitingWorker = registration.waiting;
@@ -1904,17 +1905,17 @@ async function setupServiceWorker() {
         console.log('Service worker file fetched, checking for update again...');
         // Wait a moment for browser to process, then check once more
         await new Promise(resolve => setTimeout(resolve, 1000));
-        await registration.update();
+        await registration?.update();
 
         // Check once more after a delay (update detection can take time)
         setTimeout(async () => {
-          await registration.update();
-          if (registration.waiting) {
+          await registration?.update();
+          if (registration?.waiting) {
             console.log('Found waiting worker after forced fetch');
             waitingWorker = registration.waiting;
             isCheckingForUpdate = false;
             showUpdatePrompt();
-          } else if (registration.installing) {
+          } else if (registration?.installing) {
             console.log('Service worker is installing after forced fetch - will be handled by updatefound event');
             isCheckingForUpdate = false;
           } else {
@@ -1935,7 +1936,7 @@ async function setupServiceWorker() {
   
   // Get current service worker version if available
   // IMPORTANT: Only get version from ACTIVE worker, never from waiting worker
-  if (registration.active) {
+  if (registration?.active) {
     // Double-check: if there's a waiting worker, make sure we're not reading from it
     if (registration.waiting) {
       console.log('⚠️ Waiting worker exists - only reading version from active worker');
@@ -1949,7 +1950,7 @@ async function setupServiceWorker() {
         
         // Only update if this is from the active worker (which it should be via MessageChannel)
         // But double-check that we're not in a state where the waiting worker might have activated
-        if (!registration.waiting || receivedVersion === currentSWVersion) {
+        if (!registration?.waiting || receivedVersion === currentSWVersion) {
           currentSWVersion = receivedVersion;
           console.log('Service Worker version (from active via MessageChannel):', currentSWVersion);
           console.log('App version:', APP_VERSION);
@@ -1981,7 +1982,7 @@ async function setupServiceWorker() {
         }
       }
     };
-    registration.active.postMessage({ type: 'GET_VERSION' }, [messageChannel.port2]);
+    registration.active?.postMessage({ type: 'GET_VERSION' }, [messageChannel.port2]);
   }
   
   // Listen for messages from service worker
@@ -2085,7 +2086,7 @@ async function setupServiceWorker() {
             // Only show prompt if we haven't just updated and prompt isn't already shown
             if (!justUpdated && !updatePromptShown) {
               // If we don't have version yet, wait a moment
-              if (!currentSWVersion && registration.active) {
+              if (!currentSWVersion && registration?.active) {
                 console.log('Waiting for service worker version from updatefound event...');
                 setTimeout(() => {
                   if (!updatePromptShown) {
@@ -2139,14 +2140,14 @@ async function setupServiceWorker() {
   // Check for updates immediately - AFTER setting up the listener
   // But only if there's already an active service worker
   // If there's no active worker, the new one will activate immediately (first install)
-  if (registration.active) {
+  if (registration?.active) {
     await registration.update();
   } else {
     console.log('No active service worker - new installation will activate immediately');
   }
   
   // Also check if there's already a waiting worker (on page load)
-  if (registration.waiting) {
+  if (registration?.waiting) {
     console.log('Service Worker already waiting, showing update prompt');
     // Store the active worker's version before showing the prompt
     // This ensures we show the old version, not the new one
@@ -2168,7 +2169,7 @@ async function setupServiceWorker() {
   // Skip this check if we just updated to prevent update loop
   if (!justUpdated) {
     setTimeout(async () => {
-      if (registration.active) {
+      if (registration?.active) {
         const messageChannel = new MessageChannel();
         messageChannel.port1.onmessage = (event) => {
           if (event.data && event.data.type === 'SW_VERSION') {
@@ -2190,7 +2191,7 @@ async function setupServiceWorker() {
     
     // Verify the update was successful after a delay
     setTimeout(async () => {
-      if (registration.active) {
+      if (registration?.active) {
         const messageChannel = new MessageChannel();
         messageChannel.port1.onmessage = (event) => {
           if (event.data && event.data.type === 'SW_VERSION') {
@@ -3033,7 +3034,7 @@ function resetGeminiSystemInstruction() {
     // Remove override from localStorage by loading existing config, deleting the property, and saving
     const existingConfig = loadConfigFromStorage() || {};
     if (existingConfig.gemini?.systemInstruction !== undefined) {
-      const geminiConfig = { ...existingConfig.gemini };
+      const geminiConfig: any = { ...existingConfig.gemini };
       delete geminiConfig.systemInstruction;
       saveConfigToStorage({
         gemini: geminiConfig
@@ -3153,11 +3154,11 @@ function updateHAInputsEnabledState(enabled: boolean) {
  * Shows user overrides if exist, otherwise shows defaults from config.json or environment
  */
 function loadHAConfig() {
-  const haConfig = config.features?.homeAssistant || {};
-  const defaultConfig = configData.features?.homeAssistant || {};
+  const haConfig = config.features?.homeAssistant || {} as any;
+  const defaultConfig = (configData.features?.homeAssistant || {}) as any;
   
   // Load enabled checkbox
-  const isEnabled = haConfig.enabled !== false; // Default to true if not set
+  const isEnabled = (haConfig as any).enabled !== false; // Default to true if not set
   if (haEnabledCheckbox) {
     haEnabledCheckbox.checked = isEnabled;
   }
