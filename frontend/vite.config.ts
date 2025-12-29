@@ -1,45 +1,22 @@
 import { defineConfig } from 'vite';
-import mkcert from 'vite-plugin-mkcert';
 import tailwindcss from '@tailwindcss/vite';
-import { readFileSync, writeFileSync, watchFile } from 'fs';
+import { readFileSync, writeFileSync } from 'fs';
 import { resolve } from 'path';
 import { networkInterfaces } from 'os';
+import { fileURLToPath } from 'url';
 
-// Function to update service worker version
-function updateServiceWorkerVersion() {
-  try {
-    const packageJson = JSON.parse(readFileSync('./package.json', 'utf-8'));
-    const swPath = resolve(__dirname, 'public/service-worker.js');
-    let swContent = readFileSync(swPath, 'utf-8');
-    const newVersion = packageJson.version;
-    const oldVersionMatch = swContent.match(/const VERSION = ['"]([^'"]*)['"];/);
-    const oldVersion = oldVersionMatch ? oldVersionMatch[1] : 'unknown';
-    
-    if (oldVersion !== newVersion) {
-      swContent = swContent.replace(
-        /const VERSION = ['"][^'"]*['"];/,
-        `const VERSION = '${newVersion}';`
-      );
-      writeFileSync(swPath, swContent);
-      console.log(`✅ Service worker version updated: ${oldVersion} → ${newVersion}`);
-    }
-  } catch (error) {
-    console.error('Error updating service worker version:', error);
-  }
-}
+// Fix __dirname in ESM
+const __dirname = fileURLToPath(new URL('.', import.meta.url));
 
-// Update immediately
-updateServiceWorkerVersion();
+// Detect CI (GitHub Actions)
+const isCI = process.env.CI === 'true';
 
-// Watch package.json for changes
-watchFile('./package.json', { interval: 1000 }, () => {
-  updateServiceWorkerVersion();
-});
-
+// Load package.json
 const packageJson = JSON.parse(readFileSync('./package.json', 'utf-8'));
 
-// Function to get local network IP for HMR WebSocket
-function getLocalIP(): string {
+// --- Utility: Get local IP for HMR (dev only) ---
+function getLocalIP() {
+  if (isCI) return 'localhost';
   const interfaces = networkInterfaces();
   for (const name of Object.keys(interfaces || {})) {
     for (const iface of interfaces[name] || []) {
@@ -53,41 +30,54 @@ function getLocalIP(): string {
 
 const localIP = getLocalIP();
 
-// Get base path from environment variable (for GitHub Pages)
-// If GITHUB_REPOSITORY is set (e.g., "username/TiddeliHome"), use /TiddeliHome/
-// Otherwise, use root path for localhost or custom domain
-const getBasePath = (): string => {
-  // Check if we're building for GitHub Pages
+// --- Utility: Update service worker version (dev only) ---
+function updateServiceWorkerVersion() {
+  if (isCI) return; // Never run in CI
+
+  try {
+    const swPath = resolve(__dirname, 'public/service-worker.js');
+    let swContent = readFileSync(swPath, 'utf-8');
+    const newVersion = packageJson.version;
+
+    swContent = swContent.replace(
+      /const VERSION = ['"][^'"]*['"];/,
+      `const VERSION = '${newVersion}';`
+    );
+
+    writeFileSync(swPath, swContent);
+    console.log(`Service worker version updated to ${newVersion}`);
+  } catch (err) {
+    console.error('Failed to update service worker version:', err);
+  }
+}
+
+// --- Compute base path for GitHub Pages ---
+function getBasePath() {
   if (process.env.GITHUB_PAGES === 'true') {
     const repo = process.env.GITHUB_REPOSITORY || '';
     if (repo && !repo.endsWith('.github.io')) {
-      // Extract repo name from "username/repo-name"
-      const repoName = repo.split('/')[1] || 'TiddeliHome';
+      const repoName = repo.split('/')[1];
       return `/${repoName}/`;
     }
   }
-  // Default to root for localhost or custom domain
   return '/';
-};
+}
 
 export default defineConfig({
-  base: getBasePath(), // Add base path for GitHub Pages support
+  base: getBasePath(),
+
   plugins: [
-    // Only use mkcert in development (not in GitHub Actions)
-    ...(process.env.NODE_ENV !== 'production' ? [mkcert()] : []),
     tailwindcss(),
-    // Plugin to inject version into service worker
+
+    // Inject version into service worker (safe in CI)
     {
       name: 'inject-version',
       buildStart() {
         updateServiceWorkerVersion();
-      },
-      configureServer(server) {
-        // Update in dev mode when server starts
-        updateServiceWorkerVersion();
       }
     },
-    // Plugin to ensure manifest.json is served with correct content-type
+
+    // Fix manifest.json content-type
     {
       name: 'manifest-content-type',
       configureServer(server) {
@@ -100,23 +90,23 @@ export default defineConfig({
       }
     }
   ],
+
   server: {
     port: 3000,
     host: '0.0.0.0',
-    https: process.env.NODE_ENV !== 'production', // Only HTTPS in dev (mkcert not available in CI)
+    https: false, // mkcert removed in CI-safe version
     hmr: {
-      // Use the network IP for HMR WebSocket instead of localhost
-      // This prevents the fallback to localhost which fails on mobile devices
       host: localIP,
-      protocol: 'wss', // Use secure WebSocket
-      clientPort: 3000, // Same port as server
-    },
-  } as any, // Type assertion needed due to mkcert plugin type compatibility
-  build: {
-    outDir: 'dist',
+      protocol: 'ws',
+      clientPort: 3000
+    }
   },
-  define: {
-    __APP_VERSION__: JSON.stringify(packageJson.version),
-  },
-});
 
+  build: {
+    outDir: 'dist'
+  },
+
+  define: {
+    __APP_VERSION__: JSON.stringify(packageJson.version)
+  }
+});
