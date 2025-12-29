@@ -36,5 +36,43 @@ TBD, but it will be free for any non-commercial use.
 
 
 ### Third-Party Components
-TBD
+
+This project uses the following third-party libraries and tools:
+
+#### Runtime Dependencies
+- **@google/genai** (^1.31.0) - Google Gemini Live API client library
+  - Purpose: Provides the SDK for connecting to Google's Gemini Live API for real-time audio streaming
+  - License: Apache 2.0 (commercial use permitted)
+  - Website: https://ai.google.dev/
+
+#### Development Dependencies
+- **Vite** (^6.2.0) - Build tool and development server
+  - Purpose: Fast build tool, HMR, TypeScript compilation, and production bundling
+  - License: MIT (commercial use permitted)
+  - Website: https://vitejs.dev/
+
+- **TypeScript** (^5.8.2) - TypeScript compiler
+  - Purpose: Type-safe JavaScript development
+  - License: Apache 2.0 (commercial use permitted)
+  - Website: https://www.typescriptlang.org/
+
+- **Tailwind CSS** (^4.1.18) - Utility-first CSS framework
+  - Purpose: Styling and UI design
+  - License: MIT (commercial use permitted)
+  - Website: https://tailwindcss.com/
+
+- **@tailwindcss/vite** (^4.1.18) - Tailwind CSS Vite plugin
+  - Purpose: Integrates Tailwind CSS with Vite build process
+  - License: MIT (commercial use permitted)
+
+- **vite-plugin-mkcert** (^1.17.9) - HTTPS certificate plugin for development
+  - Purpose: Automatically generates and trusts local HTTPS certificates for development
+  - License: MIT (commercial use permitted)
+  - Note: Only used in development, not included in production builds
+
+- **@types/node** (^22.14.0) - TypeScript type definitions for Node.js
+  - Purpose: TypeScript support for Node.js APIs
+  - License: MIT (commercial use permitted)
+
+**License Note**: All listed dependencies use permissive licenses (MIT or Apache 2.0) that allow commercial use. However, you should verify the current license terms of each package before commercial deployment, as licenses may change over time.
 
