@@ -120,15 +120,14 @@ const copyLogBtn = document.getElementById('copy-log-btn') as HTMLButtonElement 
 // Debug: Log the final config to debug log UI (after UI elements are available)
 if (aiFunctionCalls) {
   const logToUI = createUILogger(aiFunctionCalls);
-  const timestamp = new Date().toISOString();
-  logToUI(`\n⚙️ CONFIG LOADED [${timestamp}]\n`);
-  logToUI(`📋 Home Assistant Configuration:\n`);
+  logToUI(`\nCONFIG LOADED\n`);
+  logToUI(`Home Assistant Configuration:\n`);
   logToUI(`   Base URL: ${config.homeAssistant.baseUrl || 'Not set'}\n`);
-  logToUI(`   Access Token: ${config.homeAssistant.accessToken ? '✅ Set (' + config.homeAssistant.accessToken.length + ' chars)' : '❌ Missing'}\n`);
+  logToUI(`   Access Token: ${config.homeAssistant.accessToken ? 'Set (' + config.homeAssistant.accessToken.length + ' chars)' : 'Missing'}\n`);
   if (config.homeAssistant.accessToken) {
     logToUI(`   Token Preview: ${config.homeAssistant.accessToken.substring(0, 10)}...\n`);
   }
-  logToUI(`   Enabled: ${config.features?.homeAssistant?.enabled !== false ? '✅ Yes' : '❌ No'}\n`);
+  logToUI(`   Enabled: ${config.features?.homeAssistant?.enabled !== false ? 'Yes' : 'No'}\n`);
   logToUI(`   Timeout: ${config.features?.homeAssistant?.timeout || config.homeAssistant.timeout || 30000}ms\n`);
   logToUI(`   WebSocket Timeout: ${config.features?.homeAssistant?.webSocketConnectionTimeout || config.homeAssistant.webSocketConnectionTimeout || 5000}ms\n`);
   const domains = config.features?.homeAssistant?.functionCalling?.domains || [];
@@ -380,7 +379,7 @@ function updateHAConfig() {
       if (aiFunctionCalls && config && haConfigInput) {
         const logToUI = createUILogger(aiFunctionCalls);
         const timestamp = new Date().toISOString();
-        logToUI(`\n📋 HA CONFIG LOADED [${timestamp}]\n`);
+        logToUI(`\nHA CONFIG LOADED\n`);
         logToUI(`   Entities: ${config.entities?.length || 0}\n`);
         const domains = [...new Set(config.entities?.map((e: any) => e.domain) || [])];
         if (domains.length > 0) {
@@ -389,7 +388,7 @@ function updateHAConfig() {
         // Log the actual JSON content
         const configJson = haConfigInput.value.trim();
         if (configJson) {
-          logToUI(`\n📄 HA Config JSON:\n`);
+          logToUI(`\nHA Config JSON:\n`);
           logToUI(`${configJson}\n`);
         }
       }
@@ -401,7 +400,7 @@ function updateHAConfig() {
       if (aiFunctionCalls) {
         const logToUI = createUILogger(aiFunctionCalls);
         const timestamp = new Date().toISOString();
-        logToUI(`\n❌ HA CONFIG ERROR [${timestamp}]\n`);
+        logToUI(`\nHA CONFIG ERROR\n`);
         logToUI(`   ${error}\n`);
       }
     },
@@ -415,7 +414,7 @@ function updateHAConfig() {
     if (aiFunctionCalls) {
       const logToUI = createUILogger(aiFunctionCalls);
       const timestamp = new Date().toISOString();
-      logToUI(`\n🗑️ HA CONFIG CLEARED [${timestamp}]\n`);
+      logToUI(`\nHA CONFIG CLEARED\n`);
     }
   } else {
     appState.haConfig = result;
@@ -559,7 +558,7 @@ async function connectToGemini() {
           if (aiFunctionCalls) {
             const logToUI = createUILogger(aiFunctionCalls);
             const timestamp = new Date().toISOString();
-            logToUI(`\n⏱️ Timeout [${timestamp}]\n`);
+            logToUI(`\nTimeout\n`);
             logToUI(`   No user input received after ${config.ui?.noActionTimeout || 10000}ms\n`);
             logToUI(`   Disconnecting to prevent indefinite session...\n`);
           }
@@ -675,7 +674,7 @@ async function connectToGemini() {
       console.log('⚠️ Affective Dialog enabled - Note: This feature may have compatibility constraints');
       if (aiFunctionCalls) {
         const logToUI = createUILogger(aiFunctionCalls);
-        logToUI(`\n⚠️ Affective Dialog enabled\n`);
+        logToUI(`\nAffective Dialog enabled\n`);
         logToUI(`   This feature may not be compatible with all configurations.\n`);
         logToUI(`   If connection closes unexpectedly, try disabling other features.\n`);
       }
@@ -913,7 +912,7 @@ async function connectToGemini() {
             const timestamp = new Date().toISOString();
             const logToUI = createUILogger(aiFunctionCalls || undefined);
             
-            logToUI(`\n🔌 Connection Closed [${timestamp}]\n`);
+            logToUI(`\nConnection Closed\n`);
             logToUI(`   Code: ${event.code}\n`);
             logToUI(`   Reason: ${event.reason || '(none)'}\n`);
             logToUI(`   Was clean: ${event.wasClean}\n`);
@@ -921,7 +920,7 @@ async function connectToGemini() {
             
             // Detailed closure code interpretation
             if (event.code === 1000) {
-              logToUI(`   ⚠️ Normal closure (1000) - This usually means:\n`);
+              logToUI(`   Normal closure (1000) - This usually means:\n`);
               logToUI(`      - Gemini server closed the connection intentionally\n`);
               logToUI(`      - May indicate function response rejection or rate limiting\n`);
               logToUI(`      - Can happen with rapid/multiple function calls\n`);
@@ -929,25 +928,25 @@ async function connectToGemini() {
                 logToUI(`      - Affective Dialog may have compatibility issues - try disabling it\n`);
               }
             } else if (event.code === 1001) {
-              logToUI(`   ⚠️ Going Away (1001) - Server is shutting down or restarting\n`);
+              logToUI(`   Going Away (1001) - Server is shutting down or restarting\n`);
             } else if (event.code === 1002) {
-              logToUI(`   ❌ Protocol Error (1002) - Invalid data received\n`);
+              logToUI(`   Protocol Error (1002) - Invalid data received\n`);
             } else if (event.code === 1003) {
-              logToUI(`   ❌ Unsupported Data (1003) - Data format not supported\n`);
+              logToUI(`   Unsupported Data (1003) - Data format not supported\n`);
             } else if (event.code === 1006) {
-              logToUI(`   ❌ Abnormal Closure (1006) - Connection lost without close frame\n`);
+              logToUI(`   Abnormal Closure (1006) - Connection lost without close frame\n`);
             } else if (event.code === 1011) {
-              logToUI(`   ❌ Server Error (1011) - Gemini server encountered an internal error\n`);
+              logToUI(`   Server Error (1011) - Gemini server encountered an internal error\n`);
               logToUI(`      - This is a server-side issue, not necessarily caused by the client\n`);
               logToUI(`      - May be related to:\n`);
-              logToUI(`        • Thinking/thoughts processing\n`);
-              logToUI(`        • Function response handling\n`);
-              logToUI(`        • Server load or temporary issues\n`);
+              logToUI(`        - Thinking/thoughts processing\n`);
+              logToUI(`        - Function response handling\n`);
+              logToUI(`        - Server load or temporary issues\n`);
               logToUI(`      - Recommendation: Try reconnecting. If persistent, consider:\n`);
-              logToUI(`        • Temporarily disabling thinking feature (thinkingConfig.enabled = false)\n`);
-              logToUI(`        • Waiting a few moments before retrying\n`);
+              logToUI(`        - Temporarily disabling thinking feature (thinkingConfig.enabled = false)\n`);
+              logToUI(`        - Waiting a few moments before retrying\n`);
             } else if (event.code >= 4000) {
-              logToUI(`   ⚠️ Custom/Application Error (${event.code}) - Check Gemini API documentation\n`);
+              logToUI(`   Custom/Application Error (${event.code}) - Check Gemini API documentation\n`);
             }
           }
           

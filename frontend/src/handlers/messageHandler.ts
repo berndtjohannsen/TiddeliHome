@@ -124,9 +124,9 @@ export function createMessageHandler(ctx: MessageHandlerContext) {
         if (ctx.aiFunctionCalls) {
           const logToUI = createUILogger(ctx.aiFunctionCalls);
           
-          logToUI(`\n📥 AI → APP [${timestamp}] (Response after function call)\n`);
-          if (hasText) logToUI(`💬 Has text response\n`);
-          if (hasAudio) logToUI(`🔊 Has audio response\n`);
+          logToUI(`\nAI → APP (Response after function call)\n`);
+          if (hasText) logToUI(`Has text response\n`);
+          if (hasAudio) logToUI(`Has audio response\n`);
           if (hasToolCall) logToUI(`🔧 Has tool call\n`);
         }
       }
@@ -167,11 +167,11 @@ export function createMessageHandler(ctx: MessageHandlerContext) {
       if (!isAudioOnly && (textParts.length > 0 || thoughtParts.length > 0 || functionCalls.length > 0)) {
         const seq = ++ctx.messageSequence.value;
         
-        displayContent += `\n📥 AI → APP [${timestamp}] [#${seq}]\n`;
+        displayContent += `\nAI → APP [#${seq}]\n`;
         
         // Write AI → APP log header to UI immediately to ensure correct order
         if (ctx.aiFunctionCalls && functionCalls.length > 0) {
-          const immediateLog = `\n📥 AI → APP [${timestamp}] [#${seq}]\n`;
+          const immediateLog = `\nAI → APP [#${seq}]\n`;
           ctx.aiFunctionCalls.value = ctx.aiFunctionCalls.value + immediateLog;
           ctx.aiFunctionCalls.scrollTop = ctx.aiFunctionCalls.scrollHeight;
           headerWrittenImmediately = true;
@@ -179,7 +179,7 @@ export function createMessageHandler(ctx: MessageHandlerContext) {
           
           // Display accumulated user transcription if available
           if (ctx.currentUserTranscription.value.trim()) {
-            const transcriptionLog = `🎤 User said: "${ctx.currentUserTranscription.value.trim()}"\n`;
+            const transcriptionLog = `User said: "${ctx.currentUserTranscription.value.trim()}"\n`;
             ctx.aiFunctionCalls.value = ctx.aiFunctionCalls.value + transcriptionLog;
             ctx.aiFunctionCalls.scrollTop = ctx.aiFunctionCalls.scrollHeight;
             // Reset transcription for next turn
@@ -188,20 +188,20 @@ export function createMessageHandler(ctx: MessageHandlerContext) {
           
           // Also append Full JSON immediately to complete the entry before function execution
           // Note: No need for separator here since header already includes one
-          const fullJsonSection = `📋 Full JSON:\n${msgStr}\n`;
+          const fullJsonSection = `Full JSON:\n${msgStr}\n`;
           ctx.aiFunctionCalls.value = ctx.aiFunctionCalls.value + fullJsonSection;
           ctx.aiFunctionCalls.scrollTop = ctx.aiFunctionCalls.scrollHeight;
         }
         
         if (thoughtParts.length > 0) {
-          displayContent += '🧠 Thoughts:\n';
+          displayContent += 'Thoughts:\n';
           thoughtParts.forEach((part: any) => {
             displayContent += `${part.text || JSON.stringify(part)}\n\n`;
           });
         }
         
         if (textParts.length > 0) {
-          displayContent += '💬 Text:\n';
+          displayContent += 'Text:\n';
           textParts.forEach((part: any) => {
             displayContent += `${part.text}\n\n`;
           });
@@ -213,19 +213,19 @@ export function createMessageHandler(ctx: MessageHandlerContext) {
         
         // Show audio info only if it's mixed with other content (not pure audio-only)
         if (audioParts.length > 0 && (textParts.length > 0 || thoughtParts.length > 0 || functionCalls.length > 0)) {
-          displayContent += `🔊 Audio response (${audioParts.length} part(s))\n`;
+          displayContent += `Audio response (${audioParts.length} part(s))\n`;
         }
       }
       // Skip pure audio-only messages - they're not useful for debugging and cause UI spam
     } else if (functionCalls.length > 0) {
       // If no parts but we found function calls, still display them
       const seq = ++ctx.messageSequence.value;
-      displayContent += `\n📥 AI → APP [${timestamp}] [#${seq}]\n`;
+      displayContent += `\nAI → APP [#${seq}]\n`;
       // Function calls are displayed in the Full JSON section below - no need to show them separately here
       
       // Write AI → APP log header to UI immediately to ensure correct order
       if (ctx.aiFunctionCalls) {
-        const immediateLog = `\n📥 AI → APP [${timestamp}] [#${seq}]\n`;
+        const immediateLog = `\nAI → APP [#${seq}]\n`;
         ctx.aiFunctionCalls.value = ctx.aiFunctionCalls.value + immediateLog;
         ctx.aiFunctionCalls.scrollTop = ctx.aiFunctionCalls.scrollHeight;
         headerWrittenImmediately = true;
@@ -233,7 +233,7 @@ export function createMessageHandler(ctx: MessageHandlerContext) {
         
         // Display accumulated user transcription if available
         if (ctx.currentUserTranscription.value.trim()) {
-          const transcriptionLog = `🎤 User said: "${ctx.currentUserTranscription.value.trim()}"\n`;
+          const transcriptionLog = `User said: "${ctx.currentUserTranscription.value.trim()}"\n`;
           ctx.aiFunctionCalls.value = ctx.aiFunctionCalls.value + transcriptionLog;
           ctx.aiFunctionCalls.scrollTop = ctx.aiFunctionCalls.scrollHeight;
           // Reset transcription for next turn
@@ -242,7 +242,7 @@ export function createMessageHandler(ctx: MessageHandlerContext) {
         
         // Also append Full JSON immediately to complete the entry before function execution
         // Note: No need for separator here since header already includes one
-        const fullJsonSection = `📋 Full JSON:\n${msgStr}\n`;
+        const fullJsonSection = `Full JSON:\n${msgStr}\n`;
         ctx.aiFunctionCalls.value = ctx.aiFunctionCalls.value + fullJsonSection;
         ctx.aiFunctionCalls.scrollTop = ctx.aiFunctionCalls.scrollHeight;
       }
@@ -294,10 +294,10 @@ export function createMessageHandler(ctx: MessageHandlerContext) {
         } else {
           // Normal case: add Full JSON to contentToAdd
           if (contentToAdd) {
-            contentToAdd += `\n📋 Full JSON:\n`;
+            contentToAdd += `\nFull JSON:\n`;
           } else {
-            contentToAdd += `\n📥 AI → APP [${timestamp}]\n`;
-            contentToAdd += '📋 Full JSON:\n';
+            contentToAdd += `\nAI → APP\n`;
+            contentToAdd += 'Full JSON:\n';
           }
           contentToAdd += msgStr + '\n';
         }

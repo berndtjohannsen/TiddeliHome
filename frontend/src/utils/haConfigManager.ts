@@ -447,11 +447,11 @@ export async function extractHAConfigFromHomeAssistant(
   const timestamp = new Date().toISOString();
   
   if (logToUI) {
-    logToUI(`\n📤 APP → HA [${timestamp}] [#${seq}] (WebSocket)\n`);
-    logToUI(`🔌 Connecting to HA WebSocket for config extraction\n`);
+    logToUI(`\nAPP → HA [#${seq}] (WebSocket)\n`);
+    logToUI(`Connecting to HA WebSocket for config extraction\n`);
     logToUI(`   Base URL: ${appConfig.homeAssistant.baseUrl || 'Not set'}\n`);
     logToUI(`   WebSocket URL: ${wsUrl.replace(/\/api\/websocket$/, '')}...\n`);
-    logToUI(`   Access Token: ${appConfig.homeAssistant.accessToken ? '✅ Set (' + appConfig.homeAssistant.accessToken.length + ' chars)' : '❌ Missing'}\n`);
+    logToUI(`   Access Token: ${appConfig.homeAssistant.accessToken ? 'Set (' + appConfig.homeAssistant.accessToken.length + ' chars)' : 'Missing'}\n`);
     if (appConfig.homeAssistant.accessToken) {
       logToUI(`   Token Preview: ${appConfig.homeAssistant.accessToken.substring(0, 10)}...\n`);
     }
@@ -491,8 +491,8 @@ export async function extractHAConfigFromHomeAssistant(
     
     const responseTimestamp = new Date().toISOString();
     if (logToUI) {
-      logToUI(`\n📥 HA → APP [${responseTimestamp}] [#${seq}] (WebSocket)\n`);
-      logToUI(`✅ Config extraction successful\n`);
+      logToUI(`\nHA → APP [#${seq}] (WebSocket)\n`);
+      logToUI(`Config extraction successful\n`);
       logToUI(`   Entities extracted: ${extractedConfig.entities.length}\n`);
       const domains = [...new Set(extractedConfig.entities.map(e => e.domain))];
       logToUI(`   Domains: ${domains.join(', ')}\n`);
@@ -502,7 +502,7 @@ export async function extractHAConfigFromHomeAssistant(
       }
       
       // Log the actual JSON after the summary
-      logToUI(`\n📄 HA Config JSON:\n`);
+      logToUI(`\nHA Config JSON:\n`);
       logToUI(`${configJson}\n`);
     }
 
@@ -524,7 +524,7 @@ export async function extractHAConfigFromHomeAssistant(
     statusElement.className = 'debug-extract-status error';
     
     const errorTimestamp = new Date().toISOString();
-    logToUI(`\n❌ ERROR [${errorTimestamp}] [#${seq}]\n`);
+    logToUI(`\nERROR [#${seq}]\n`);
     logToUI(`   ${errorMsg}\n`);
     
     if (onError) {

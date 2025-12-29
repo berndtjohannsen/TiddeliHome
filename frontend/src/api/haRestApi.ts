@@ -84,8 +84,8 @@ export async function executeHAServiceCall(
   // Use provided sequence number or generate a placeholder (caller should manage sequence)
   const seq = sequenceNum !== undefined ? sequenceNum : 0;
   const timestamp = new Date().toISOString();
-  logToUI(`\n📤 APP → HA [${timestamp}] [#${seq}]\n`);
-  logToUI(`🚀 Executing HA service call: ${domain}.${service}\n`);
+  logToUI(`\nAPP → HA [#${seq}]\n`);
+  logToUI(`Executing HA service call: ${domain}.${service}\n`);
   logToUI(`   Entity: ${entityId}\n`);
   logToUI(`   REST API URL: ${serviceUrl}\n`);
   logToUI(`   Method: POST\n`);
@@ -97,7 +97,7 @@ export async function executeHAServiceCall(
     logToUI(`   Service data: ${JSON.stringify(service_data)}\n`);
   }
   
-  console.log(`🚀 Executing HA service call: ${domain}.${service}`, {
+  console.log(`Executing HA service call: ${domain}.${service}`, {
     url: serviceUrl,
     body: requestBody
   });
@@ -113,27 +113,27 @@ export async function executeHAServiceCall(
     });
     
     const responseTimestamp = new Date().toISOString();
-    logToUI(`\n📥 HA → APP [${responseTimestamp}] [#${seq}]\n`);
+    logToUI(`\nHA → APP [#${seq}]\n`);
     logToUI(`   Response Status: ${response.status} ${response.statusText}\n`);
     
     if (!response.ok) {
       const errorText = await response.text();
       const errorMsg = `HA API error (${response.status}): ${errorText}`;
-      logToUI(`❌ Failed: ${errorMsg}\n`);
+      logToUI(`Failed: ${errorMsg}\n`);
       logToUI(`   Response Body: ${errorText}\n`);
       throw new Error(errorMsg);
     }
     
     const result = await response.json();
-    console.log('✅ HA service call successful:', result);
-    logToUI(`✅ Successfully executed ${domain}.${service} on ${entityId}\n`);
+    console.log('HA service call successful:', result);
+    logToUI(`Successfully executed ${domain}.${service} on ${entityId}\n`);
     logToUI(`   Response Body: ${JSON.stringify(result, null, 2)}\n`);
     
     return seq;
   } catch (error: any) {
-    console.error('❌ HA service call failed:', error);
+    console.error('HA service call failed:', error);
     const errorTimestamp = new Date().toISOString();
-    logToUI(`\n❌ ERROR [${errorTimestamp}]\n`);
+    logToUI(`\nERROR\n`);
     logToUI(`   Error: ${error.message || String(error)}\n`);
     throw error;
   }
@@ -171,13 +171,13 @@ export async function getHAEntityState(
   // Use provided sequence number or generate a placeholder
   const seq = sequenceNum !== undefined ? sequenceNum : 0;
   const timestamp = new Date().toISOString();
-  logToUI(`\n📤 APP → HA [${timestamp}] [#${seq}]\n`);
-  logToUI(`🔍 Querying HA entity state: ${entityId}\n`);
+  logToUI(`\nAPP → HA [#${seq}]\n`);
+  logToUI(`Querying HA entity state: ${entityId}\n`);
   logToUI(`   Method: GET\n`);
   logToUI(`   URL: ${stateUrl}\n`);
   
   // Reduced console logging - details are logged to UI debug panel
-  // console.log(`🔍 Querying HA entity state: ${entityId}`, { url: stateUrl });
+  // console.log(`Querying HA entity state: ${entityId}`, { url: stateUrl });
   
   try {
     const response = await fetch(stateUrl, {
@@ -205,17 +205,17 @@ export async function getHAEntityState(
       }
       
       const errorTimestamp = new Date().toISOString();
-      logToUI(`\n❌ ERROR [${errorTimestamp}]\n`);
+      logToUI(`\nERROR\n`);
       logToUI(`   ${errorMsg}\n`);
       throw new Error(errorMsg);
     }
     
     const state = await response.json();
     // Reduced console logging - success details are logged to UI debug panel
-    // console.log('✅ HA state query successful:', state);
+    // console.log('HA state query successful:', state);
     const responseTimestamp = new Date().toISOString();
-    logToUI(`\n📥 HA → APP [${responseTimestamp}] [#${seq}]\n`);
-    logToUI(`✅ State for ${entityId}: ${state.state}\n`);
+    logToUI(`\nHA → APP [#${seq}]\n`);
+    logToUI(`State for ${entityId}: ${state.state}\n`);
     if (state.attributes && Object.keys(state.attributes).length > 0) {
       // Format attributes nicely
       const attrs = Object.entries(state.attributes)

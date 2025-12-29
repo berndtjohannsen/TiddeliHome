@@ -81,15 +81,15 @@ export function processFunctionCalls(
               const responseTimestamp = new Date().toISOString();
               const logToUI = createUILogger(ctx.aiFunctionCalls || undefined);
               
-              logToUI(`\n📤 APP → AI [${responseTimestamp}] [#${seq}]\n`);
-              logToUI(`📤 Sending function response: control_home_assistant\n`);
+              logToUI(`\nAPP → AI [#${seq}]\n`);
+              logToUI(`Sending function response: control_home_assistant\n`);
               logToUI(`   Function: ${name}\n`);
               logToUI(`   Call ID: ${functionCallId}\n`);
-              logToUI(`   Thought signature: ${thoughtSignature ? 'Found ✅' : 'Not found ⚠️'}\n`);
+              logToUI(`   Thought signature: ${thoughtSignature ? 'Found' : 'Not found'}\n`);
               logToUI(`   Response structure:\n${JSON.stringify(responsePayload, null, 2)}\n`);
               
               // Log what we received for comparison
-              logToUI(`   📥 Received function call structure:\n`);
+              logToUI(`   Received function call structure:\n`);
               logToUI(`      Path: ${item.path || 'unknown'}\n`);
               logToUI(`      Function call keys: ${Object.keys(funcCall || {}).join(', ')}\n`);
               logToUI(`      Full funcCall: ${JSON.stringify(funcCall, null, 2)}\n`);
@@ -99,10 +99,10 @@ export function processFunctionCalls(
               // Pass as array even for single response
               try {
                 (ctx.session.value as any).sendToolResponse({ functionResponses: [responsePayload] });
-                logToUI(`✅ Function response sent successfully\n`);
+                logToUI(`Function response sent successfully\n`);
               } catch (sendError) {
                 console.error('Error in sendToolResponse:', sendError);
-                logToUI(`❌ Error sending function response: ${sendError instanceof Error ? sendError.message : String(sendError)}\n`);
+                logToUI(`Error sending function response: ${sendError instanceof Error ? sendError.message : String(sendError)}\n`);
                 // Don't throw - let the outer catch handle it, but log the specific error
                 throw sendError;
               }
@@ -135,8 +135,8 @@ export function processFunctionCalls(
               const errorResponseTimestamp = new Date().toISOString();
               const logToUIError = createUILogger(ctx.aiFunctionCalls || undefined);
               
-              logToUIError(`\n📤 APP → AI [${errorResponseTimestamp}] [#${seq}]\n`);
-              logToUIError(`📤 Sending function response: control_home_assistant (ERROR)\n`);
+              logToUIError(`\nAPP → AI [#${seq}]\n`);
+              logToUIError(`Sending function response: control_home_assistant (ERROR)\n`);
               logToUIError(`   Call ID: ${functionCallId}\n`);
               logToUIError(`   Response: Error - ${err.message}\n`);
               logToUIError(`   Payload:\n${JSON.stringify(errorPayload, null, 2)}\n`);
@@ -161,9 +161,9 @@ export function processFunctionCalls(
         const logToUI = createUILogger(ctx.aiFunctionCalls);
         
         if (thoughtSignature) {
-          logToUI(`\n🔍 Found thought signature for function call ${functionCallId}\n`);
+          logToUI(`\nFound thought signature for function call ${functionCallId}\n`);
         } else {
-          logToUI(`\n⚠️ No thought signature found for function call ${functionCallId}\n`);
+          logToUI(`\nNo thought signature found for function call ${functionCallId}\n`);
           // Log the full message structure to help debug where thought signatures might be
           logToUI(`   Debug: Checking message structure for thought signatures...\n`);
           logToUI(`   funcCall keys: ${Object.keys(funcCall || {}).join(', ')}\n`);
@@ -185,7 +185,7 @@ export function processFunctionCalls(
                 }
                 // Check for thought signature in part
                 if (part.thoughtSignature || part.thought_signature) {
-                  logToUI(`     ⚠️ Found thought signature in part[${idx}]!\n`);
+                  logToUI(`     Found thought signature in part[${idx}]\n`);
                 }
               });
             } else {
@@ -195,13 +195,13 @@ export function processFunctionCalls(
           // Also check top-level message structure
           logToUI(`   Top-level msg keys: ${Object.keys(msg || {}).join(', ')}\n`);
           if ((msg as any).thoughtSignature || (msg as any).thought_signature) {
-            logToUI(`   ⚠️ Found thought signature at top level!\n`);
+            logToUI(`   Found thought signature at top level\n`);
           }
           // Check toolCall structure
           if ((msg as any).toolCall) {
             logToUI(`   msg.toolCall keys: ${Object.keys((msg as any).toolCall || {}).join(', ')}\n`);
             if ((msg as any).toolCall.thoughtSignature || (msg as any).toolCall.thought_signature) {
-              logToUI(`   ⚠️ Found thought signature in msg.toolCall!\n`);
+              logToUI(`   Found thought signature in msg.toolCall\n`);
             }
           }
         }
@@ -291,11 +291,11 @@ export function processFunctionCalls(
               const responseTimestamp = new Date().toISOString();
               const logToUI = createUILogger(ctx.aiFunctionCalls || undefined);
               
-              logToUI(`\n📤 APP → AI [${responseTimestamp}] [#${seq}]\n`);
-              logToUI(`📤 Sending function response: get_home_assistant_state\n`);
+              logToUI(`\nAPP → AI [#${seq}]\n`);
+              logToUI(`Sending function response: get_home_assistant_state\n`);
               logToUI(`   Function: ${name}\n`);
               logToUI(`   Call ID: ${functionCallId}\n`);
-              logToUI(`   Thought signature: ${thoughtSignature ? 'Found ✅' : 'Not found ⚠️'}\n`);
+              logToUI(`   Thought signature: ${thoughtSignature ? 'Found' : 'Not found'}\n`);
               if (thoughtSignature) {
                 logToUI(`   Thought signature value: ${JSON.stringify(thoughtSignature).substring(0, 100)}...\n`);
               }
@@ -310,23 +310,23 @@ export function processFunctionCalls(
                 const ws = conn?.ws;
                 
                 if (ws && ws.readyState !== WebSocket.OPEN) {
-                  logToUI(`\n⚠️ WebSocket not open (state: ${ws.readyState}) - cannot send function response\n`);
+                  logToUI(`\nWebSocket not open (state: ${ws.readyState}) - cannot send function response\n`);
                   console.error('WebSocket state:', ws.readyState, '(1=OPEN, 3=CLOSED)');
                   return;
                 }
                 
-                logToUI(`\n📤 Sending function response (WebSocket state: ${ws?.readyState || 'unknown'})\n`);
+                logToUI(`\nSending function response (WebSocket state: ${ws?.readyState || 'unknown'})\n`);
                 // Use sendToolResponse for function responses
                 // Pass as array even for single response
                 sessionAny.sendToolResponse({ functionResponses: [responsePayload] });
-                logToUI(`✅ Function response sent successfully\n`);
+                logToUI(`Function response sent successfully\n`);
                 
                 // Monitor for connection closure after sending
                 if (conn && ws) {
                   const originalOnClose = conn.callbacks?.onclose;
                   if (originalOnClose) {
                     const tempOnClose = (event: CloseEvent) => {
-                      logToUI(`\n⚠️ Connection closed after sending function response:\n`);
+                      logToUI(`\nConnection closed after sending function response:\n`);
                       logToUI(`   Code: ${event.code}\n`);
                       logToUI(`   Reason: ${event.reason || '(none)'}\n`);
                       logToUI(`   Was clean: ${event.wasClean}\n`);
@@ -349,8 +349,8 @@ export function processFunctionCalls(
                 }
               } catch (err) {
                 // Reduced verbose error logging to prevent audio stutter
-                console.error('❌ Error sending function response:', err instanceof Error ? err.message : String(err));
-                logToUI(`\n❌ Error sending function response: ${err instanceof Error ? err.message : String(err)}\n`);
+                console.error('Error sending function response:', err instanceof Error ? err.message : String(err));
+                logToUI(`\nError sending function response: ${err instanceof Error ? err.message : String(err)}\n`);
               }
             } catch (err) {
               // Reduced verbose error logging to prevent audio stutter
