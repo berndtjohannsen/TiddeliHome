@@ -81,13 +81,13 @@
                     placeholder="Enter your Gemini API key"
                 />
                 <p class="text-xs text-gray-600 mt-2 text-left leading-relaxed">
-                    Required. Get your API key from <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-blue-500 hover:underline">Google AI Studio</a>
+                    Get your API key from <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-blue-500 hover:underline">Google AI Studio</a>
                 </p>
             </div>
 
             <div class="mb-6">
                 <label class="block text-gray-900 text-sm mb-2 text-left font-medium" for="gemini-model">
-                    Model:
+                    Model<span class="text-red-500">*</span>:
                 </label>
                 <input 
                     type="text"
@@ -96,7 +96,7 @@
                     placeholder="gemini-2.5-flash-native-audio-preview-09-2025"
                 />
                 <p class="text-xs text-gray-600 mt-2 text-left leading-relaxed">
-                    Gemini model name for audio interactions
+                    Gemini model. Models at <a href="https://docs.cloud.google.com/vertex-ai/generative-ai/docs/live-api" target="_blank" class="text-blue-500 hover:underline">https://docs.cloud.google.com/vertex-ai/generative-ai/docs/live-api</a>
                 </p>
             </div>
 
@@ -111,7 +111,7 @@
                     placeholder="e.g., Aoede, Charon, Fenrir"
                 />
                 <p class="text-xs text-gray-600 mt-2 text-left leading-relaxed">
-                    Voice name for the AI (optional, leave empty for default)
+                    Voice name for the AI (leave empty for Gemnini default)
                 </p>
             </div>
 
@@ -126,7 +126,7 @@
                     placeholder="e.g., sv-SE, en-US"
                 />
                 <p class="text-xs text-gray-600 mt-2 text-left leading-relaxed">
-                    Language code for AI responses (optional, leave empty for default)
+                    Language code for AI responses (leave empty for Gemini default)
                 </p>
             </div>
 
@@ -261,7 +261,7 @@
                         max="1000"
                     />
                     <p class="text-xs text-gray-600 mt-2 text-left leading-relaxed">
-                        Audio to include before detected speech starts (prevents truncation). Default: 20ms
+                        Audio to include before detected speech starts (prevents truncation).
                     </p>
                 </div>
 
@@ -278,7 +278,7 @@
                         max="5000"
                     />
                     <p class="text-xs text-gray-600 mt-2 text-left leading-relaxed">
-                        Duration of silence required to consider speech ended. Default: 100ms
+                        Duration of silence required to consider speech ended.
                     </p>
                 </div>
             </div>
@@ -297,9 +297,6 @@
                     class="settings-textarea w-full min-h-[300px]" 
                     placeholder="General system instructions will appear here..."
                 ></textarea>
-                <p class="text-xs text-gray-600 mt-2 text-left leading-relaxed">
-                    Customize the base system instructions (general behavior, audio responses, capabilities). Leave empty to use the default template.
-                </p>
             </div>
 
             <div class="mb-6">
@@ -423,20 +420,11 @@
                 <div id="ha-config-summary" class="ha-config-summary"></div>
             </div>
 
-            <div class="mb-6 border-t border-gray-300 pt-4">
-                <label class="block text-gray-900 text-sm mb-2 text-left font-medium" for="ha-config-input">
-                    Home Assistant Config (JSON):
-                </label>
-                <textarea 
-                    id="ha-config-input" 
-                    class="settings-textarea" 
-                    placeholder='Use "Extract HA Config" button above to populate this field'
-                    readonly
-                ></textarea>
-                <p class="text-xs text-gray-600 mt-2 text-left leading-relaxed">
-                    Read-only. This config is automatically populated when you extract configuration from Home Assistant. It will be passed to the AI when connecting.
-                </p>
-            </div>
+            <!-- Hidden textarea for internal HA config storage (JSON is logged to debug tab) -->
+            <textarea 
+                id="ha-config-input" 
+                style="display: none;"
+            ></textarea>
 
             <div class="mb-6 border-t border-gray-300 pt-4">
                 <div class="flex justify-between items-center mb-3">

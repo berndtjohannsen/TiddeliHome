@@ -18,15 +18,6 @@ import { APP_VERSION } from './utils/version';
 // Load configuration (can be reloaded after UI changes)
 let config = loadConfig();
 
-// Debug: Log the final config to verify it's loaded correctly
-console.log('Final loaded config:', {
-  baseUrl: config.homeAssistant.baseUrl,
-  hasAccessToken: !!config.homeAssistant.accessToken,
-  accessTokenLength: config.homeAssistant.accessToken?.length || 0,
-  accessTokenPreview: config.homeAssistant.accessToken ? 
-    `${config.homeAssistant.accessToken.substring(0, 10)}...` : 'MISSING'
-});
-
 // Helper functions
 
 /**
@@ -121,6 +112,24 @@ const resetHaInstructionBtn = document.getElementById('reset-ha-instruction-btn'
 const haConfigStatus = document.getElementById('ha-config-status') as HTMLDivElement | null;
 const aiFunctionCalls = document.getElementById('ai-function-calls') as HTMLTextAreaElement | null;
 const copyLogBtn = document.getElementById('copy-log-btn') as HTMLButtonElement | null;
+
+// Debug: Log the final config to debug log UI (after UI elements are available)
+if (aiFunctionCalls) {
+  const logToUI = createUILogger(aiFunctionCalls);
+  const timestamp = new Date().toISOString();
+  logToUI(`\n⚙️ CONFIG LOADED [${timestamp}]\n`);
+  logToUI(`📋 Home Assistant Configuration:\n`);
+  logToUI(`   Base URL: ${config.homeAssistant.baseUrl || 'Not set'}\n`);
+  logToUI(`   Access Token: ${config.homeAssistant.accessToken ? '✅ Set (' + config.homeAssistant.accessToken.length + ' chars)' : '❌ Missing'}\n`);
+  if (config.homeAssistant.accessToken) {
+    logToUI(`   Token Preview: ${config.homeAssistant.accessToken.substring(0, 10)}...\n`);
+  }
+  logToUI(`   Enabled: ${config.features?.homeAssistant?.enabled !== false ? '✅ Yes' : '❌ No'}\n`);
+  logToUI(`   Timeout: ${config.features?.homeAssistant?.timeout || config.homeAssistant.timeout || 30000}ms\n`);
+  logToUI(`   WebSocket Timeout: ${config.features?.homeAssistant?.webSocketConnectionTimeout || config.homeAssistant.webSocketConnectionTimeout || 5000}ms\n`);
+  const domains = config.features?.homeAssistant?.functionCalling?.domains || [];
+  logToUI(`   Allowed Domains: ${domains.length > 0 ? domains.join(', ') : 'All domains'}\n`);
+}
 
 // HA config and states are now stored in appState
 
@@ -361,10 +370,36 @@ function updateHAConfig() {
   
   const result = updateHAConfigFromTextarea(
     haConfigInput,
-    (config) => { appState.haConfig = config; },
+    (config) => { 
+      appState.haConfig = config;
+      // Log to debug UI
+      if (aiFunctionCalls && config && haConfigInput) {
+        const logToUI = createUILogger(aiFunctionCalls);
+        const timestamp = new Date().toISOString();
+        logToUI(`\n📋 HA CONFIG LOADED [${timestamp}]\n`);
+        logToUI(`   Entities: ${config.entities?.length || 0}\n`);
+        const domains = [...new Set(config.entities?.map((e: any) => e.domain) || [])];
+        if (domains.length > 0) {
+          logToUI(`   Domains: ${domains.join(', ')}\n`);
+        }
+        // Log the actual JSON content
+        const configJson = haConfigInput.value.trim();
+        if (configJson) {
+          logToUI(`\n📄 HA Config JSON:\n`);
+          logToUI(`${configJson}\n`);
+        }
+      }
+    },
     (error) => { 
       appState.haConfig = null;
       updateUI(false, error);
+      // Log error to debug UI
+      if (aiFunctionCalls) {
+        const logToUI = createUILogger(aiFunctionCalls);
+        const timestamp = new Date().toISOString();
+        logToUI(`\n❌ HA CONFIG ERROR [${timestamp}]\n`);
+        logToUI(`   ${error}\n`);
+      }
     },
     haConfigSummary || undefined,
     haConfigSummarySection || undefined
@@ -372,6 +407,12 @@ function updateHAConfig() {
   
   if (result === null && haConfigInput.value.trim() === '') {
     appState.haConfig = null;
+    // Log clear to debug UI
+    if (aiFunctionCalls) {
+      const logToUI = createUILogger(aiFunctionCalls);
+      const timestamp = new Date().toISOString();
+      logToUI(`\n🗑️ HA CONFIG CLEARED [${timestamp}]\n`);
+    }
   } else {
     appState.haConfig = result;
   }
@@ -576,8 +617,16 @@ async function connectToGemini() {
     }
 
     // Initialize Gemini
-    const ai = new GoogleGenAI({ apiKey: config.gemini.apiKey });
-    console.log('GoogleGenAI initialized');
+    // Use v1alpha API version if affective dialog or proactive audio is enabled (required for these features)
+    const needsV1Alpha = config.gemini.enableAffectiveDialog || config.gemini.proactiveAudio;
+    const httpOptions = needsV1Alpha 
+      ? { apiVersion: 'v1alpha' as const }
+      : undefined;
+    const ai = new GoogleGenAI({ 
+      apiKey: config.gemini.apiKey,
+      ...(httpOptions && { httpOptions })
+    });
+    console.log('GoogleGenAI initialized', httpOptions ? `(using ${httpOptions.apiVersion} API)` : '');
 
     // Build tools array
     const tools = buildTools();
@@ -599,8 +648,18 @@ async function connectToGemini() {
     };
     
     // Add affective dialog if enabled
+    // According to Gemini docs: enableAffectiveDialog should be at TOP LEVEL of LiveConnectConfig
+    // Note: Do NOT nest in generationConfig (deprecated) - set fields directly on LiveConnectConfig
     if (config.gemini.enableAffectiveDialog) {
+      // Set enableAffectiveDialog at top level (SDK will handle internal mapping)
       connectConfig.enableAffectiveDialog = true;
+      console.log('⚠️ Affective Dialog enabled - Note: This feature may have compatibility constraints');
+      if (aiFunctionCalls) {
+        const logToUI = createUILogger(aiFunctionCalls);
+        logToUI(`\n⚠️ Affective Dialog enabled\n`);
+        logToUI(`   This feature may not be compatible with all configurations.\n`);
+        logToUI(`   If connection closes unexpectedly, try disabling other features.\n`);
+      }
     }
     
     // Add voice configuration if specified
@@ -825,7 +884,10 @@ async function connectToGemini() {
         onmessage: createMessageHandler(messageHandlerContext),
         onclose: (event) => {
           console.log('Gemini Live Closed', event);
-          console.trace('Close stack trace');
+          // Only log stack trace in development mode or for unexpected closures
+          if (import.meta.env.DEV || (event.code !== 1000 && event.code !== 1001)) {
+            console.trace('Close stack trace');
+          }
           
           // Log closure details to UI debug panel
           if (aiFunctionCalls) {
@@ -844,6 +906,9 @@ async function connectToGemini() {
               logToUI(`      - Gemini server closed the connection intentionally\n`);
               logToUI(`      - May indicate function response rejection or rate limiting\n`);
               logToUI(`      - Can happen with rapid/multiple function calls\n`);
+              if (config.gemini.enableAffectiveDialog) {
+                logToUI(`      - Affective Dialog may have compatibility issues - try disabling it\n`);
+              }
             } else if (event.code === 1001) {
               logToUI(`   ⚠️ Going Away (1001) - Server is shutting down or restarting\n`);
             } else if (event.code === 1002) {
@@ -1422,6 +1487,93 @@ let isCheckingForUpdate = false; // Flag to prevent multiple simultaneous update
 let updatePromptShown = false; // Flag to prevent showing multiple update prompts
 let isRegistering = false; // Flag to prevent multiple simultaneous registration attempts
 
+// Helper function: Pre-fetch service worker file to verify certificate acceptance
+// On mobile Chrome, we need to pre-fetch the service worker file to ensure
+// the certificate is accepted before attempting registration
+async function preFetchServiceWorkerFile(): Promise<boolean> {
+  try {
+    console.log('Pre-fetching service worker file to verify certificate acceptance...');
+    const preFetchResponse = await fetch('/service-worker.js', {
+      method: 'GET',
+      cache: 'no-store',
+      credentials: 'omit' // Don't send cookies
+    });
+    
+    if (preFetchResponse.ok) {
+      console.log('✅ Service worker file is accessible (status: ' + preFetchResponse.status + ')');
+      // Read the response to ensure it's fully loaded
+      await preFetchResponse.text();
+      console.log('✅ Service worker file content loaded successfully');
+      // Small delay to ensure certificate state is settled (especially on mobile)
+      await new Promise(resolve => setTimeout(resolve, 500));
+      return true;
+    } else {
+      console.warn('⚠️ Service worker file returned status: ' + preFetchResponse.status);
+      return false;
+    }
+  } catch (preFetchError: any) {
+    const isCertError = preFetchError?.message?.includes('certificate') || 
+                       preFetchError?.message?.includes('SSL') ||
+                       preFetchError?.name === 'TypeError' && preFetchError?.message?.includes('Failed to fetch');
+    
+    if (isCertError) {
+      console.warn('⚠️ Certificate not accepted for service worker file');
+      console.warn('Please accept the certificate and reload the page');
+    } else {
+      console.warn('Pre-fetch had non-certificate error:', preFetchError?.message);
+    }
+    return false;
+  }
+}
+
+// Helper function: Clean up stuck service workers
+// Only cleans up if there are multiple registrations (which shouldn't happen)
+// Normal "installing" and "waiting" states are not considered stuck
+async function cleanupStuckServiceWorkers(): Promise<void> {
+  try {
+    const existingRegs = await navigator.serviceWorker.getRegistrations();
+    if (existingRegs.length > 1) {
+      // Multiple registrations shouldn't exist - keep only the first one
+      console.warn(`Found ${existingRegs.length} service worker registration(s) - cleaning up duplicates...`);
+      // Unregister all except the first one
+      for (let i = 1; i < existingRegs.length; i++) {
+        try {
+          await existingRegs[i].unregister();
+          console.log('✅ Unregistered duplicate service worker:', existingRegs[i].scope);
+        } catch (unregError) {
+          console.warn('Could not unregister service worker:', unregError);
+        }
+      }
+      // Wait a moment after cleanup
+      await new Promise(resolve => setTimeout(resolve, 500));
+    } else if (existingRegs.length === 1) {
+      console.log('Found 1 existing service worker registration (normal)');
+    }
+  } catch (cleanupError) {
+    console.warn('Could not check for existing service workers:', cleanupError);
+  }
+}
+
+// Helper function: Register service worker
+async function registerServiceWorker(): Promise<ServiceWorkerRegistration> {
+  console.log('Attempting service worker registration...');
+  const reg = await navigator.serviceWorker.register('/service-worker.js', {
+    scope: '/',
+    updateViaCache: 'none' // Always check for updates, don't use cache
+  });
+  console.log('✅ Service worker registration successful!');
+  return reg;
+}
+
+// Helper function: Reset update flags
+function resetUpdateFlags(): void {
+  justUpdated = true;
+  isCheckingForUpdate = false;
+  updatePromptShown = false;
+  activeSWVersionBeforeUpdate = null;
+  hideUpdatePrompt();
+}
+
 // Function to set up service worker after successful registration
 async function setupServiceWorker() {
   if (!registration) return;
@@ -1614,36 +1766,26 @@ async function setupServiceWorker() {
         headers: { 'Cache-Control': 'no-cache' }
       }).then(async () => {
         console.log('Service worker file fetched, checking for update again...');
-        // Wait a moment for browser to process, then check again
-        await new Promise(resolve => setTimeout(resolve, 500));
+        // Wait a moment for browser to process, then check once more
+        await new Promise(resolve => setTimeout(resolve, 1000));
         await registration.update();
-        
-        // Check multiple times as the update might take a moment
-        let attempts = 0;
-        const checkInterval = setInterval(async () => {
-          attempts++;
+
+        // Check once more after a delay (update detection can take time)
+        setTimeout(async () => {
           await registration.update();
-          
           if (registration.waiting) {
             console.log('Found waiting worker after forced fetch');
-            clearInterval(checkInterval);
             waitingWorker = registration.waiting;
             isCheckingForUpdate = false;
             showUpdatePrompt();
           } else if (registration.installing) {
-            console.log('Service worker is installing after forced fetch');
-            clearInterval(checkInterval);
+            console.log('Service worker is installing after forced fetch - will be handled by updatefound event');
             isCheckingForUpdate = false;
-            // Will be handled by updatefound event
-          } else if (attempts >= 5) {
-            console.log('No update detected after multiple attempts - versions may already match or service worker file is cached');
-            clearInterval(checkInterval);
+          } else {
+            console.log('No update detected - versions may already match or service worker file is cached');
             isCheckingForUpdate = false;
-            // Don't show prompt if there's no actual waiting worker
-            // The versions might already match, or the browser hasn't detected the change yet
-            console.log('Not showing update prompt - no waiting worker found');
           }
-        }, 1000);
+        }, 2000);
       }).catch(err => {
         console.error('Error fetching service worker file:', err);
         isCheckingForUpdate = false;
@@ -1863,15 +2005,6 @@ async function setupServiceWorker() {
   // If there's no active worker, the new one will activate immediately (first install)
   if (registration.active) {
     await registration.update();
-    
-    // Force browser to check for new service worker file (bypass cache)
-    // This helps when the service worker file has been updated but browser cached it
-    fetch('/service-worker.js?v=' + APP_VERSION + '&t=' + Date.now(), { cache: 'no-store' })
-      .then(() => {
-        // After fetching, check for update again
-        setTimeout(() => registration.update(), 100);
-      })
-      .catch(() => {}); // Ignore fetch errors
   } else {
     console.log('No active service worker - new installation will activate immediately');
   }
@@ -1958,13 +2091,7 @@ async function setupServiceWorker() {
       // Set flag to prevent update loop
       sessionStorage.setItem('justUpdated', 'true');
       sessionStorage.setItem('justUpdatedTimestamp', Date.now().toString());
-      justUpdated = true;
-      isCheckingForUpdate = false;
-      updatePromptShown = false; // Reset prompt flag
-      // Clear the stored version - after reload, we'll get the new version
-      activeSWVersionBeforeUpdate = null;
-      // Hide update prompt if still visible
-      hideUpdatePrompt();
+      resetUpdateFlags();
       // Small delay to ensure state is saved before reload
       setTimeout(() => {
         window.location.reload();
@@ -1972,19 +2099,12 @@ async function setupServiceWorker() {
     } else {
       console.log('App not installed - service worker updated but not reloading (user is browsing)');
       // Just update the flag, don't reload
-      justUpdated = true;
-      isCheckingForUpdate = false;
-      updatePromptShown = false;
-      activeSWVersionBeforeUpdate = null;
-      hideUpdatePrompt();
+      resetUpdateFlags();
     }
   });
   
-  // Check for updates on page load (always)
-  // This is the standard practice - check once when page loads
-  if (registration.active) {
-    await registration.update();
-  }
+  // Note: Update check on page load is already done above (line ~1966)
+  // No need to check again here
   
   // Only check for updates periodically if app is installed
   // When not installed, user is just browsing - don't interrupt with update checks
@@ -2021,97 +2141,15 @@ if ('serviceWorker' in navigator) {
     }
     
     // Check for stuck service workers and clean them up first
-    try {
-      const existingRegs = await navigator.serviceWorker.getRegistrations();
-      if (existingRegs.length > 0) {
-        console.log(`Found ${existingRegs.length} existing service worker registration(s)`);
-        
-        // Check if any are stuck in installing state
-        const stuckWorkers = existingRegs.filter(reg => {
-          const installing = reg.installing;
-          const waiting = reg.waiting;
-          // Check if installing worker has been stuck for more than 10 seconds
-          if (installing && installing.state === 'installing') {
-            return true;
-          }
-          // Check if waiting worker exists (might be stuck)
-          if (waiting) {
-            return true;
-          }
-          return false;
-        });
-        
-        if (stuckWorkers.length > 0) {
-          console.warn(`Found ${stuckWorkers.length} potentially stuck service worker(s), cleaning up...`);
-          // Unregister stuck workers
-          for (const reg of stuckWorkers) {
-            try {
-              await reg.unregister();
-              console.log('✅ Unregistered stuck service worker:', reg.scope);
-            } catch (unregError) {
-              console.warn('Could not unregister service worker:', unregError);
-            }
-          }
-          // Wait a moment after cleanup
-          await new Promise(resolve => setTimeout(resolve, 500));
-        }
-      }
-    } catch (cleanupError) {
-      console.warn('Could not check for existing service workers:', cleanupError);
-    }
+    await cleanupStuckServiceWorkers();
     
     isRegistering = true;
     
-    // PRE-FETCH: On mobile Chrome, we need to pre-fetch the service worker file
-    // to ensure the certificate is accepted before attempting registration
-    // Regular fetch works, but service worker registration has stricter requirements
-    let preFetchSuccessful = false;
+    // Pre-fetch service worker file to verify certificate acceptance
+    await preFetchServiceWorkerFile();
     
     try {
-      console.log('Pre-fetching service worker file to verify certificate acceptance...');
-      const preFetchResponse = await fetch('/service-worker.js', {
-        method: 'GET',
-        cache: 'no-store',
-        credentials: 'omit' // Don't send cookies
-      });
-      
-      if (preFetchResponse.ok) {
-        preFetchSuccessful = true;
-        console.log('✅ Service worker file is accessible (status: ' + preFetchResponse.status + ')');
-        // Read the response to ensure it's fully loaded
-        await preFetchResponse.text();
-        console.log('✅ Service worker file content loaded successfully');
-      } else {
-        console.warn('⚠️ Service worker file returned status: ' + preFetchResponse.status);
-      }
-    } catch (preFetchError: any) {
-      const isCertError = preFetchError?.message?.includes('certificate') || 
-                         preFetchError?.message?.includes('SSL') ||
-                         preFetchError?.name === 'TypeError' && preFetchError?.message?.includes('Failed to fetch');
-      
-      if (isCertError) {
-        console.warn('⚠️ Certificate not accepted for service worker file');
-        console.warn('Please accept the certificate and reload the page');
-        // Will fall through to registration attempt which will handle the error
-      } else {
-        console.warn('Pre-fetch had non-certificate error:', preFetchError?.message);
-        // Continue anyway - might still work
-      }
-    }
-    
-    // Small delay to ensure certificate state is settled (especially on mobile)
-    if (preFetchSuccessful) {
-      await new Promise(resolve => setTimeout(resolve, 500));
-    }
-    
-    try {
-      console.log('Attempting service worker registration...');
-      registration = await navigator.serviceWorker.register('/service-worker.js', {
-        scope: '/',
-        updateViaCache: 'none' // Always check for updates, don't use cache
-      });
-      
-      console.log('✅ Service worker registration successful!');
+      registration = await registerServiceWorker();
       
       // Set up all service worker functionality
       await setupServiceWorker();
@@ -2205,46 +2243,30 @@ if ('serviceWorker' in navigator) {
             console.log('Manual retry triggered...');
             
             // Step 1: Pre-fetch the service worker file to ensure certificate is accepted
-            try {
-              console.log('Step 1: Pre-fetching service worker file...');
-              const testFetch = await fetch('/service-worker.js', { 
-                method: 'GET', 
-                cache: 'no-store' 
-              });
-              const content = await testFetch.text(); // Read the content fully
-              console.log('✅ Pre-fetch successful (length:', content.length, 'bytes)');
-            } catch (fetchErr: any) {
-              console.warn('⚠️ Pre-fetch failed:', fetchErr?.message || fetchErr);
-              console.warn('This might indicate the certificate is not fully accepted');
-            }
+            console.log('Step 1: Pre-fetching service worker file...');
+            await preFetchServiceWorkerFile();
             
-            // Step 2: Wait a moment for certificate state to settle
-            await new Promise(resolve => setTimeout(resolve, 500));
-            
-            // Step 3: Unregister any existing service workers
+            // Step 2: Clean up any existing service workers
+            console.log('Step 2: Cleaning up existing service workers...');
             try {
               const existingRegs = await navigator.serviceWorker.getRegistrations();
               if (existingRegs.length > 0) {
-                console.log('Step 2: Found', existingRegs.length, 'existing registration(s), unregistering...');
+                console.log('Found', existingRegs.length, 'existing registration(s), unregistering...');
                 await Promise.all(existingRegs.map(reg => reg.unregister()));
                 console.log('✅ Existing registrations unregistered');
                 await new Promise(resolve => setTimeout(resolve, 1000));
               } else {
-                console.log('Step 2: No existing registrations found');
+                console.log('No existing registrations found');
               }
             } catch (unregErr: any) {
               console.warn('Could not unregister existing workers:', unregErr?.message || unregErr);
             }
             
-            // Step 4: Attempt registration
+            // Step 3: Attempt registration
             console.log('Step 3: Attempting service worker registration...');
-            registration = await navigator.serviceWorker.register('/service-worker.js', {
-              scope: '/',
-              updateViaCache: 'none'
-            });
-            console.log('✅ Service Worker registered successfully!');
+            registration = await registerServiceWorker();
             
-            // Step 5: Set up service worker
+            // Step 4: Set up service worker
             await setupServiceWorker();
             console.log('✅ Service worker setup complete!');
           } catch (err: any) {

@@ -4,7 +4,7 @@
 // - Always fetch API calls from network (no caching for real-time data)
 
 const CACHE_NAME = 'tiddelihome-v1';
-const VERSION = '0.1.238'; // This will be replaced at build time
+const VERSION = '0.1.242'; // This will be replaced at build time
 
 // Static assets to cache (files that don't change often)
 const STATIC_ASSETS = [

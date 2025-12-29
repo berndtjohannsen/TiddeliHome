@@ -280,10 +280,7 @@ export function parseHAConfig(
     const parsed = JSON.parse(trimmed);
     // Handle both direct entity array and CustomHAConfig format
     const config: CustomHAConfig = parsed.entities ? parsed : { entities: parsed };
-    console.log('HA config loaded:', {
-      entityCount: config?.entities?.length || 0,
-      type: Array.isArray(config?.entities) ? 'array' : typeof config
-    });
+    // Note: Logging moved to caller functions that have access to UI logger
     return config;
   } catch (error) {
     console.error('Invalid JSON in HA config:', error);
@@ -312,7 +309,7 @@ export function updateHAConfigFromTextarea(
 ): CustomHAConfig | null {
   const configText = textarea.value.trim();
   if (!configText) {
-    console.log('HA config cleared');
+    // Note: Logging moved to caller functions that have access to UI logger
     return null;
   }
 
@@ -374,12 +371,7 @@ export async function handleHAConfigFileUpload(
     // Parse and store config
     const config = parseHAConfig(text, onError);
     if (config) {
-      console.log('HA config loaded from file:', {
-        fileName: file.name,
-        fileSize: file.size,
-        entityCount: config?.entities?.length || 0,
-        type: Array.isArray(config?.entities) ? 'array' : typeof config
-      });
+      // Note: Logging moved to caller functions that have access to UI logger
       if (onConfigUpdate) {
         onConfigUpdate(config);
       }
@@ -441,13 +433,6 @@ export async function extractHAConfigFromHomeAssistant(
   
   // Build WebSocket URL
   const wsUrl = getHAWebSocketUrl(appConfig.homeAssistant.baseUrl);
-  console.log('HA Config:', {
-    baseUrl: appConfig.homeAssistant.baseUrl,
-    webSocketUrl: wsUrl,
-    accessTokenPreview: appConfig.homeAssistant.accessToken ? 
-      `${appConfig.homeAssistant.accessToken.substring(0, 10)}...` : 'MISSING',
-    accessTokenLength: appConfig.homeAssistant.accessToken?.length || 0
-  });
 
   // Disable button and show loading state
   button.disabled = true;
@@ -455,16 +440,23 @@ export async function extractHAConfigFromHomeAssistant(
   statusElement.textContent = 'Connecting to Home Assistant...';
   statusElement.className = 'debug-extract-status loading';
 
-  // Log to UI debug panel
-  const logToUI = createUILogger(logElement);
+  // Log to UI debug panel instead of console
+  const logToUI = logElement ? createUILogger(logElement) : null;
 
   const seq = messageSequenceRef ? ++messageSequenceRef.value : 0;
   const timestamp = new Date().toISOString();
   
-  logToUI(`\n📤 APP → HA [${timestamp}] [#${seq}] (WebSocket)\n`);
-  logToUI(`🔌 Connecting to HA WebSocket for config extraction\n`);
-  logToUI(`   URL: ${wsUrl.replace(/\/api\/websocket$/, '')}...\n`);
-  logToUI(`   Purpose: Fetch entity/device/area registries\n`);
+  if (logToUI) {
+    logToUI(`\n📤 APP → HA [${timestamp}] [#${seq}] (WebSocket)\n`);
+    logToUI(`🔌 Connecting to HA WebSocket for config extraction\n`);
+    logToUI(`   Base URL: ${appConfig.homeAssistant.baseUrl || 'Not set'}\n`);
+    logToUI(`   WebSocket URL: ${wsUrl.replace(/\/api\/websocket$/, '')}...\n`);
+    logToUI(`   Access Token: ${appConfig.homeAssistant.accessToken ? '✅ Set (' + appConfig.homeAssistant.accessToken.length + ' chars)' : '❌ Missing'}\n`);
+    if (appConfig.homeAssistant.accessToken) {
+      logToUI(`   Token Preview: ${appConfig.homeAssistant.accessToken.substring(0, 10)}...\n`);
+    }
+    logToUI(`   Purpose: Fetch entity/device/area registries\n`);
+  }
 
   try {
     console.log('Extracting HA config from:', wsUrl);
@@ -481,7 +473,8 @@ export async function extractHAConfigFromHomeAssistant(
     const extractedStates = result.states;
 
     // Update textarea with the config only (no states mixed in)
-    textarea.value = JSON.stringify(extractedConfig, null, 2);
+    const configJson = JSON.stringify(extractedConfig, null, 2);
+    textarea.value = configJson;
     
     // Show user-friendly summary with states for display
     if (summaryElement) {
@@ -497,17 +490,21 @@ export async function extractHAConfigFromHomeAssistant(
     statusElement.className = 'debug-extract-status success';
     
     const responseTimestamp = new Date().toISOString();
-    logToUI(`\n📥 HA → APP [${responseTimestamp}] [#${seq}] (WebSocket)\n`);
-    logToUI(`✅ Config extraction successful\n`);
-    logToUI(`   Entities extracted: ${extractedConfig.entities.length}\n`);
-    const domains = [...new Set(extractedConfig.entities.map(e => e.domain))];
-    logToUI(`   Domains: ${domains.join(', ')}\n`);
-    
-    console.log('HA config extracted successfully:', {
-      entityCount: extractedConfig.entities.length,
-      domains: domains,
-      areas: [...new Set(extractedConfig.entities.map(e => e.area).filter(a => a))]
-    });
+    if (logToUI) {
+      logToUI(`\n📥 HA → APP [${responseTimestamp}] [#${seq}] (WebSocket)\n`);
+      logToUI(`✅ Config extraction successful\n`);
+      logToUI(`   Entities extracted: ${extractedConfig.entities.length}\n`);
+      const domains = [...new Set(extractedConfig.entities.map(e => e.domain))];
+      logToUI(`   Domains: ${domains.join(', ')}\n`);
+      const areas = [...new Set(extractedConfig.entities.map(e => e.area).filter(a => a))];
+      if (areas.length > 0) {
+        logToUI(`   Areas: ${areas.join(', ')}\n`);
+      }
+      
+      // Log the actual JSON after the summary
+      logToUI(`\n📄 HA Config JSON:\n`);
+      logToUI(`${configJson}\n`);
+    }
 
     // Update config callback (config only, no states)
     if (onConfigUpdate) {
