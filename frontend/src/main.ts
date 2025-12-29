@@ -1601,7 +1601,8 @@ async function preFetchServiceWorkerFile(): Promise<boolean> {
       logToUI(`\nService Worker Pre-fetch\n`, 'debug');
       logToUI(`   Pre-fetching service worker file to verify certificate acceptance...\n`, 'debug');
     }
-    const preFetchResponse = await fetch('/service-worker.js', {
+    const basePath = import.meta.env.BASE_URL || '/';
+    const preFetchResponse = await fetch(`${basePath}service-worker.js`, {
       method: 'GET',
       cache: 'no-store',
       credentials: 'omit' // Don't send cookies
@@ -1676,9 +1677,16 @@ async function cleanupStuckServiceWorkers(): Promise<void> {
 
 // Helper function: Register service worker
 async function registerServiceWorker(): Promise<ServiceWorkerRegistration> {
-  console.log('Attempting service worker registration...');
-  const reg = await navigator.serviceWorker.register('/service-worker.js', {
-    scope: '/',
+  if (aiFunctionCalls) {
+    const logToUI = createUILogger(aiFunctionCalls);
+    logToUI(`\nService Worker Registration\n`, 'normal');
+    logToUI(`   Attempting registration...\n`, 'normal');
+  }
+  // Use import.meta.env.BASE_URL for GitHub Pages support (Vite provides this)
+  const basePath = import.meta.env.BASE_URL || '/';
+  const swPath = `${basePath}service-worker.js`;
+  const reg = await navigator.serviceWorker.register(swPath, {
+    scope: basePath,
     updateViaCache: 'none' // Always check for updates, don't use cache
   });
   console.log('✅ Service worker registration successful!');
@@ -1888,7 +1896,8 @@ async function setupServiceWorker() {
       }
       
       // Fetch the service worker file with cache busting to force browser to check
-      fetch('/service-worker.js?v=' + APP_VERSION + '&t=' + Date.now(), { 
+      const basePath = import.meta.env.BASE_URL || '/';
+      fetch(`${basePath}service-worker.js?v=${APP_VERSION}&t=${Date.now()}`, { 
         cache: 'no-store',
         headers: { 'Cache-Control': 'no-cache' }
       }).then(async () => {
@@ -2296,7 +2305,8 @@ if ('serviceWorker' in navigator) {
         // This indicates Chrome on Android's strict service worker certificate policy
         let fetchWorksButSWFails = false;
         try {
-          const testFetch = await fetch('/service-worker.js', { method: 'HEAD', cache: 'no-store' });
+          const basePath = import.meta.env.BASE_URL || '/';
+          const testFetch = await fetch(`${basePath}service-worker.js`, { method: 'HEAD', cache: 'no-store' });
           if (testFetch.ok) {
             fetchWorksButSWFails = true;
           }
@@ -2354,7 +2364,8 @@ if ('serviceWorker' in navigator) {
           console.warn('IMPORTANT: On mobile, you need to accept the certificate for the service worker file separately!');
           console.warn('');
           console.warn('📱 MOBILE FIX (Pixel 7 / Chrome):');
-          console.warn('1. Copy this URL: ' + window.location.origin + '/service-worker.js');
+          const basePath = import.meta.env.BASE_URL || '/';
+          console.warn('1. Copy this URL: ' + window.location.origin + basePath + 'service-worker.js');
           console.warn('2. Open it in a NEW TAB in your browser');
           console.warn('3. Accept the certificate warning when it appears');
           console.warn('4. Return to this tab - the service worker will retry automatically');
@@ -2410,7 +2421,8 @@ if ('serviceWorker' in navigator) {
               console.error('🔒 SSL Certificate Issue:');
               console.error('On Chrome Android, service worker registration has stricter requirements.');
               console.error('Try:');
-              console.error('1. Open this URL directly: ' + window.location.origin + '/service-worker.js');
+              const basePath = import.meta.env.BASE_URL || '/';
+              console.error('1. Open this URL directly: ' + window.location.origin + basePath + 'service-worker.js');
               console.error('2. Accept the certificate');
               console.error('3. Hard refresh this page (pull down to refresh)');
               console.error('4. Run retryServiceWorkerRegistration() again');

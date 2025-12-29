@@ -6,12 +6,24 @@
 const CACHE_NAME = 'tiddelihome-v1';
 const VERSION = '0.1.242'; // This will be replaced at build time
 
+// Get base path from service worker's own location
+// If service worker is at /TiddeliHome/service-worker.js, base path is /TiddeliHome/
+// If service worker is at /service-worker.js, base path is /
+const getBasePath = () => {
+  const swPath = self.location.pathname; // e.g., "/TiddeliHome/service-worker.js" or "/service-worker.js"
+  const basePath = swPath.substring(0, swPath.lastIndexOf('/') + 1); // e.g., "/TiddeliHome/" or "/"
+  return basePath;
+};
+
+const BASE_PATH = getBasePath();
+
 // Static assets to cache (files that don't change often)
+// Paths are relative to service worker scope (handled by Vite base path)
 const STATIC_ASSETS = [
-  '/',
-  '/index.html',
-  '/manifest.json',
-  '/audio-processor.js',
+  BASE_PATH, // Root (e.g., "/TiddeliHome/" or "/")
+  BASE_PATH + 'index.html',
+  BASE_PATH + 'manifest.json',
+  BASE_PATH + 'audio-processor.js',
   // JS, CSS, images will be matched by extension
 ];
 
@@ -81,21 +93,23 @@ self.addEventListener('fetch', (event) => {
   }
   
   // Check if this is a static asset that should be cached
+  // Note: url.pathname already includes base path (e.g., "/TiddeliHome/index.html")
+  const pathname = url.pathname;
   const isStaticAsset = 
     // JavaScript files
-    url.pathname.endsWith('.js') ||
+    pathname.endsWith('.js') ||
     // CSS files
-    url.pathname.endsWith('.css') ||
+    pathname.endsWith('.css') ||
     // Images
-    url.pathname.match(/\.(png|jpg|jpeg|gif|svg|webp|ico)$/i) ||
+    pathname.match(/\.(png|jpg|jpeg|gif|svg|webp|ico)$/i) ||
     // Icons directory
-    url.pathname.includes('/icons/') ||
-    // Manifest
-    url.pathname === '/manifest.json' ||
-    // HTML (main page)
-    url.pathname === '/' || url.pathname === '/index.html' ||
-    // Audio processor (loaded dynamically)
-    url.pathname === '/audio-processor.js';
+    pathname.includes('/icons/') ||
+    // Manifest (with or without base path)
+    pathname === '/manifest.json' || pathname === BASE_PATH + 'manifest.json' ||
+    // HTML (main page) - check for base path root or index.html
+    pathname === BASE_PATH || pathname === BASE_PATH + 'index.html' || pathname === '/' || pathname === '/index.html' ||
+    // Audio processor (with or without base path)
+    pathname === '/audio-processor.js' || pathname === BASE_PATH + 'audio-processor.js';
   
   // Check if this is an API call that should NOT be cached
   const isAPICall = 

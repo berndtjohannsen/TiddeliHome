@@ -53,9 +53,28 @@ function getLocalIP(): string {
 
 const localIP = getLocalIP();
 
+// Get base path from environment variable (for GitHub Pages)
+// If GITHUB_REPOSITORY is set (e.g., "username/TiddeliHome"), use /TiddeliHome/
+// Otherwise, use root path for localhost or custom domain
+const getBasePath = (): string => {
+  // Check if we're building for GitHub Pages
+  if (process.env.GITHUB_PAGES === 'true') {
+    const repo = process.env.GITHUB_REPOSITORY || '';
+    if (repo && !repo.endsWith('.github.io')) {
+      // Extract repo name from "username/repo-name"
+      const repoName = repo.split('/')[1] || 'TiddeliHome';
+      return `/${repoName}/`;
+    }
+  }
+  // Default to root for localhost or custom domain
+  return '/';
+};
+
 export default defineConfig({
+  base: getBasePath(), // Add base path for GitHub Pages support
   plugins: [
-    mkcert(),
+    // Only use mkcert in development (not in GitHub Actions)
+    ...(process.env.NODE_ENV !== 'production' ? [mkcert()] : []),
     tailwindcss(),
     // Plugin to inject version into service worker
     {
@@ -84,7 +103,7 @@ export default defineConfig({
   server: {
     port: 3000,
     host: '0.0.0.0',
-    https: true, // Enable HTTPS (handled by mkcert plugin)
+    https: process.env.NODE_ENV !== 'production', // Only HTTPS in dev (mkcert not available in CI)
     hmr: {
       // Use the network IP for HMR WebSocket instead of localhost
       // This prevents the fallback to localhost which fails on mobile devices
