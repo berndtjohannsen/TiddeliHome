@@ -303,6 +303,7 @@
                 <button id="save-gemini-config-btn" class="btn-primary btn-blue w-full">
                     💾 Save Gemini Configuration
                 </button>
+                <p class="text-xs text-gray-400 mt-1 text-center italic">(normally not needed)</p>
                 <div id="gemini-config-status" class="text-sm text-gray-600 mt-2 min-h-[1.2rem]"></div>
             </div>
         </div>
@@ -320,6 +321,24 @@
             </div>
 
             <div class="mb-6 border-t border-gray-300 pt-4">
+                <button class="btn-primary btn-green mb-4 w-full" id="extract-ha-config-btn">
+                    🔄 Extract HA Config from Home Assistant
+                </button>
+                <div id="extract-status" class="text-sm text-gray-600 mt-2 min-h-[1.2rem]"></div>
+            </div>
+            
+            <div class="mb-6 js-hidden" id="ha-config-summary-section">
+                <label class="block text-gray-900 text-sm mb-2 text-left font-medium">Extracted Configuration Summary:</label>
+                <div id="ha-config-summary" class="ha-config-summary"></div>
+            </div>
+
+            <!-- Hidden textarea for internal HA config storage (JSON is logged to debug tab) -->
+            <textarea 
+                id="ha-config-input" 
+                style="display: none;"
+            ></textarea>
+
+            <div class="mb-6 border-t border-gray-300 pt-4">
                 <label class="block text-gray-900 text-sm mb-2 text-left font-medium" for="ha-base-url">
                     Home Assistant Base URL:
                 </label>
@@ -330,7 +349,7 @@
                     placeholder="http://homeassistant.local:8123"
                 />
                 <p class="text-xs text-gray-600 mt-2 text-left leading-relaxed">
-                    The base URL of your Home Assistant instance (e.g., http://homeassistant.local:8123 or https://ha.example.com)
+                    The base URL of your Home Assistant (e.g., http://homeassistant.local:8123)
                 </p>
             </div>
 
@@ -355,7 +374,7 @@
                     </button>
                 </div>
                 <p class="text-xs text-gray-600 mt-2 text-left leading-relaxed">
-                    Long-lived access token from Home Assistant. Create one in your profile settings.
+                    Long-lived Home Assistant access token, create in your Home Assistant profile settings.
                 </p>
             </div>
 
@@ -404,27 +423,9 @@
                     placeholder="light, scene, script"
                 />
                 <p class="text-xs text-gray-600 mt-2 text-left leading-relaxed">
-                    Domains that the AI can control (e.g., light, scene, script, switch, sensor, climate, cover). Separate multiple domains with commas.
+                    Home Assistant Domains that the AI can control (e.g., light, scene, script, switch, sensor, climate, cover). Separate multiple domains with commas.
                 </p>
             </div>
-
-            <div class="mb-6 border-t border-gray-300 pt-4">
-                <button class="btn-primary btn-green mb-4 w-full" id="extract-ha-config-btn">
-                    🔄 Extract HA Config from Home Assistant
-                </button>
-                <div id="extract-status" class="text-sm text-gray-600 mt-2 min-h-[1.2rem]"></div>
-            </div>
-            
-            <div class="mb-6 js-hidden" id="ha-config-summary-section">
-                <label class="block text-gray-900 text-sm mb-2 text-left font-medium">Extracted Configuration Summary:</label>
-                <div id="ha-config-summary" class="ha-config-summary"></div>
-            </div>
-
-            <!-- Hidden textarea for internal HA config storage (JSON is logged to debug tab) -->
-            <textarea 
-                id="ha-config-input" 
-                style="display: none;"
-            ></textarea>
 
             <div class="mb-6 border-t border-gray-300 pt-4">
                 <div class="flex justify-between items-center mb-3">
@@ -447,6 +448,7 @@
                     <button id="save-ha-config-btn" class="btn-primary btn-blue w-full">
                         💾 Save HA Configuration
                     </button>
+                    <p class="text-xs text-gray-400 mt-1 text-center italic">(normally not needed)</p>
                     <div id="ha-config-status" class="text-sm text-gray-600 mt-2 min-h-[1.2rem]"></div>
                 </div>
             </div>

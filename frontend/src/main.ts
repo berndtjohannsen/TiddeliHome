@@ -110,6 +110,10 @@ const haSystemInstruction = document.getElementById('ha-system-instruction') as 
 const saveHaConfigBtn = document.getElementById('save-ha-config-btn') as HTMLButtonElement | null;
 const resetHaInstructionBtn = document.getElementById('reset-ha-instruction-btn') as HTMLButtonElement | null;
 const haConfigStatus = document.getElementById('ha-config-status') as HTMLDivElement | null;
+
+// Auto-save state management for HA
+let haSaveTimeout: number | null = null;
+let hasUnsavedHAChanges = false;
 const aiFunctionCalls = document.getElementById('ai-function-calls') as HTMLTextAreaElement | null;
 const copyLogBtn = document.getElementById('copy-log-btn') as HTMLButtonElement | null;
 
@@ -424,6 +428,21 @@ function updateHAConfig() {
  */
 async function extractHAConfig() {
   if (!extractHaConfigBtn || !extractStatus || !haConfigInput) return;
+
+  // Check if HA is enabled
+  if (!haEnabledCheckbox?.checked) {
+    if (extractStatus) {
+      extractStatus.textContent = '⚠️ Please enable Home Assistant Feature first';
+      extractStatus.className = 'text-sm text-orange-600 mt-2 min-h-[1.2rem]';
+      setTimeout(() => {
+        if (extractStatus) {
+          extractStatus.textContent = '';
+          extractStatus.className = 'text-sm text-gray-600 mt-2 min-h-[1.2rem]';
+        }
+      }, 3000);
+    }
+    return;
+  }
 
   const messageSequenceRef = { value: appState.messageSequence };
   const result = await extractHAConfigFromHomeAssistant(
@@ -2525,6 +2544,71 @@ const resetGeminiInstructionBtn = document.getElementById('reset-gemini-instruct
 const saveGeminiConfigBtn = document.getElementById('save-gemini-config-btn') as HTMLButtonElement | null;
 const geminiConfigStatus = document.getElementById('gemini-config-status') as HTMLDivElement | null;
 
+// Auto-save state management
+let geminiSaveTimeout: number | null = null;
+let hasUnsavedGeminiChanges = false;
+
+/**
+ * Update the save status indicator
+ */
+function updateGeminiSaveIndicator(state: 'saving' | 'saved' | 'unsaved' | 'error' | 'idle') {
+  if (!geminiConfigStatus) return;
+  
+  switch (state) {
+    case 'saving':
+      geminiConfigStatus.textContent = '💾 Saving...';
+      geminiConfigStatus.className = 'text-sm text-blue-600 mt-2 min-h-[1.2rem]';
+      break;
+    case 'saved':
+      geminiConfigStatus.textContent = '✅ Saved';
+      geminiConfigStatus.className = 'text-sm text-green-600 mt-2 min-h-[1.2rem]';
+      // Clear after 2 seconds
+      setTimeout(() => {
+        if (geminiConfigStatus && geminiConfigStatus.textContent === '✅ Saved') {
+          geminiConfigStatus.textContent = '';
+          geminiConfigStatus.className = 'text-sm text-gray-600 mt-2 min-h-[1.2rem]';
+        }
+      }, 2000);
+      break;
+    case 'unsaved':
+      geminiConfigStatus.textContent = '⚪ Unsaved changes';
+      geminiConfigStatus.className = 'text-sm text-gray-500 mt-2 min-h-[1.2rem]';
+      break;
+    case 'error':
+      geminiConfigStatus.textContent = '❌ Error saving';
+      geminiConfigStatus.className = 'text-sm text-red-600 mt-2 min-h-[1.2rem]';
+      break;
+    case 'idle':
+    default:
+      geminiConfigStatus.textContent = '';
+      geminiConfigStatus.className = 'text-sm text-gray-600 mt-2 min-h-[1.2rem]';
+      break;
+  }
+}
+
+/**
+ * Schedule auto-save with debouncing
+ * Different delays for textareas vs text inputs
+ */
+function scheduleGeminiAutoSave(input: HTMLElement) {
+  hasUnsavedGeminiChanges = true;
+  updateGeminiSaveIndicator('unsaved');
+  
+  // Clear existing timeout
+  if (geminiSaveTimeout !== null) {
+    clearTimeout(geminiSaveTimeout);
+  }
+  
+  // Longer delay for textareas (multiline inputs), shorter for text inputs
+  const isTextarea = input.tagName === 'TEXTAREA';
+  const delay = isTextarea ? 2000 : 1000; // 2 seconds for textareas, 1 second for text inputs
+  
+  geminiSaveTimeout = window.setTimeout(() => {
+    saveGeminiConfig(true); // true = auto-save mode
+    hasUnsavedGeminiChanges = false;
+  }, delay);
+}
+
 /**
  * Load Gemini configuration from localStorage and populate form fields
  * Uses config.json defaults when no saved config exists
@@ -2604,9 +2688,15 @@ function loadGeminiConfig() {
 
 /**
  * Save Gemini configuration to localStorage
+ * @param isAutoSave - If true, this is an auto-save (shows different message)
  */
-function saveGeminiConfig() {
+function saveGeminiConfig(isAutoSave = false) {
   if (!geminiConfigStatus) return;
+  
+  // Show saving indicator
+  if (isAutoSave) {
+    updateGeminiSaveIndicator('saving');
+  }
   
   try {
     // Collect values from form
@@ -2637,6 +2727,7 @@ function saveGeminiConfig() {
     
     // Validate API key
     if (!geminiConfig.apiKey) {
+      updateGeminiSaveIndicator('error');
       geminiConfigStatus.textContent = '⚠️ API Key is required';
       geminiConfigStatus.className = 'text-sm text-orange-600 mt-2 min-h-[1.2rem]';
       return;
@@ -2666,29 +2757,133 @@ function saveGeminiConfig() {
     config = loadConfig();
     
     // Show success message
-    geminiConfigStatus.textContent = '✅ Configuration saved successfully';
-    geminiConfigStatus.className = 'text-sm text-green-600 mt-2 min-h-[1.2rem]';
+    if (isAutoSave) {
+      updateGeminiSaveIndicator('saved');
+    } else {
+      geminiConfigStatus.textContent = '✅ Configuration saved successfully';
+      geminiConfigStatus.className = 'text-sm text-green-600 mt-2 min-h-[1.2rem]';
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => {
+        if (geminiConfigStatus) {
+          geminiConfigStatus.textContent = '';
+          geminiConfigStatus.className = 'text-sm text-gray-600 mt-2 min-h-[1.2rem]';
+        }
+      }, 3000);
+    }
     
-    // Clear success message after 3 seconds
-    setTimeout(() => {
-      if (geminiConfigStatus) {
-        geminiConfigStatus.textContent = '';
-        geminiConfigStatus.className = 'text-sm text-gray-600 mt-2 min-h-[1.2rem]';
-      }
-    }, 3000);
+    hasUnsavedGeminiChanges = false;
     
   } catch (error) {
     console.error('Error saving Gemini configuration:', error);
-    geminiConfigStatus.textContent = '❌ Error saving configuration';
-    geminiConfigStatus.className = 'text-sm text-red-600 mt-2 min-h-[1.2rem]';
+    updateGeminiSaveIndicator('error');
   }
+}
+
+/**
+ * Set up auto-save listeners for Gemini configuration inputs
+ */
+function setupGeminiAutoSaveListeners() {
+  // Text inputs - debounced auto-save (1 second delay)
+  const textInputs = [
+    geminiApiKeyInput,
+    geminiModelInput,
+    geminiVoiceNameInput,
+    geminiLanguageCodeInput,
+    geminiThinkingBudgetInput,
+    geminiVadPrefixPaddingInput,
+    geminiVadSilenceDurationInput
+  ];
+  
+  textInputs.forEach(input => {
+    if (input) {
+      input.addEventListener('input', () => scheduleGeminiAutoSave(input));
+    }
+  });
+  
+  // Textareas - debounced auto-save (2 second delay) + save on blur
+  const textareas = [
+    geminiSystemInstruction,
+    geminiInitialGreetingMessageTextarea
+  ];
+  
+  textareas.forEach(textarea => {
+    if (textarea) {
+      // Save on blur (when user leaves the field)
+      textarea.addEventListener('blur', () => {
+        if (hasUnsavedGeminiChanges) {
+          // Clear any pending timeout
+          if (geminiSaveTimeout !== null) {
+            clearTimeout(geminiSaveTimeout);
+            geminiSaveTimeout = null;
+          }
+          saveGeminiConfig(true);
+          hasUnsavedGeminiChanges = false;
+        }
+      });
+      
+      // Also debounce while typing (for long pauses)
+      textarea.addEventListener('input', () => scheduleGeminiAutoSave(textarea));
+    }
+  });
+  
+  // Checkboxes - save immediately on change (no debouncing)
+  const checkboxes = [
+    geminiEnableGroundingCheckbox,
+    geminiEnableAffectiveDialogCheckbox,
+    geminiProactiveAudioCheckbox,
+    geminiThinkingEnabledCheckbox,
+    geminiInitialGreetingEnabledCheckbox,
+    geminiVadDisabledCheckbox
+  ];
+  
+  checkboxes.forEach(checkbox => {
+    if (checkbox) {
+      checkbox.addEventListener('change', () => {
+        saveGeminiConfig(true);
+        hasUnsavedGeminiChanges = false;
+      });
+    }
+  });
+  
+  // Selects - save immediately on change (no debouncing)
+  const selects = [
+    geminiVadStartSensitivitySelect,
+    geminiVadEndSensitivitySelect
+  ];
+  
+  selects.forEach(select => {
+    if (select) {
+      select.addEventListener('change', () => {
+        saveGeminiConfig(true);
+        hasUnsavedGeminiChanges = false;
+      });
+    }
+  });
 }
 
 // Initialize Gemini config UI
 if (saveGeminiConfigBtn) {
   saveGeminiConfigBtn.addEventListener('click', (e) => {
     e.stopPropagation();
-    saveGeminiConfig();
+    // Clear any pending auto-save
+    if (geminiSaveTimeout !== null) {
+      clearTimeout(geminiSaveTimeout);
+      geminiSaveTimeout = null;
+    }
+    saveGeminiConfig(false); // false = manual save
+    hasUnsavedGeminiChanges = false;
+  });
+}
+
+// Set up auto-save listeners
+setupGeminiAutoSaveListeners();
+
+// Initialize reset button
+if (resetGeminiInstructionBtn) {
+  resetGeminiInstructionBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    resetGeminiSystemInstruction();
   });
 }
 
@@ -2715,8 +2910,121 @@ function resetGeminiSystemInstruction() {
     const defaultGeneral = configData.gemini?.systemInstruction || '';
     geminiSystemInstruction.value = defaultGeneral;
     
+    // Remove override from localStorage by loading existing config, deleting the property, and saving
+    const existingConfig = loadConfigFromStorage() || {};
+    if (existingConfig.gemini?.systemInstruction !== undefined) {
+      const geminiConfig = { ...existingConfig.gemini };
+      delete geminiConfig.systemInstruction;
+      saveConfigToStorage({
+        gemini: geminiConfig
+      });
+    }
+    
+    // Reload config to apply changes immediately
+    config = loadConfig();
+    
+    // Clear any pending auto-save
+    if (geminiSaveTimeout !== null) {
+      clearTimeout(geminiSaveTimeout);
+      geminiSaveTimeout = null;
+    }
+    
+    // Trigger auto-save to persist the reset
+    hasUnsavedGeminiChanges = false;
+    saveGeminiConfig(true);
+    
+    // Show success message
+    if (geminiConfigStatus) {
+      geminiConfigStatus.textContent = '✅ Reset to default successfully';
+      geminiConfigStatus.className = 'text-sm text-green-600 mt-2 min-h-[1.2rem]';
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => {
+        if (geminiConfigStatus) {
+          geminiConfigStatus.textContent = '';
+          geminiConfigStatus.className = 'text-sm text-gray-600 mt-2 min-h-[1.2rem]';
+        }
+      }, 3000);
+    }
+    
   } catch (error) {
     console.error('Error resetting general system instruction:', error);
+    if (geminiConfigStatus) {
+      geminiConfigStatus.textContent = '❌ Error resetting instruction';
+      geminiConfigStatus.className = 'text-sm text-red-600 mt-2 min-h-[1.2rem]';
+    }
+  }
+}
+
+/**
+ * Enable or disable all HA configuration inputs based on enabled state
+ */
+function updateHAInputsEnabledState(enabled: boolean) {
+  const inputs = [
+    haBaseUrlInput,
+    haAccessTokenInput,
+    haTimeoutInput,
+    haWebSocketTimeoutInput,
+    haDomainsInput,
+    haSystemInstruction
+  ];
+  
+  const buttons = [
+    document.getElementById('extract-ha-config-btn') as HTMLButtonElement | null,
+    resetHaInstructionBtn
+  ];
+  
+  // Enable/disable all inputs
+  inputs.forEach(input => {
+    if (input) {
+      input.disabled = !enabled;
+      // Add visual feedback with opacity
+      if (input.parentElement) {
+        if (enabled) {
+          input.parentElement.style.opacity = '1';
+        } else {
+          input.parentElement.style.opacity = '0.6';
+        }
+      }
+    }
+  });
+  
+  // Enable/disable buttons
+  buttons.forEach(button => {
+    if (button) {
+      button.disabled = !enabled;
+      if (enabled) {
+        button.style.opacity = '1';
+        button.style.cursor = 'pointer';
+      } else {
+        button.style.opacity = '0.6';
+        button.style.cursor = 'not-allowed';
+      }
+    }
+  });
+  
+  // Show/hide hint message
+  let hintElement = document.getElementById('ha-disabled-hint');
+  if (!enabled) {
+    if (!hintElement) {
+      // Create hint element if it doesn't exist
+      hintElement = document.createElement('div');
+      hintElement.id = 'ha-disabled-hint';
+      hintElement.className = 'text-sm text-orange-600 mt-2 mb-4 p-3 bg-orange-50 border border-orange-200 rounded';
+      hintElement.textContent = 'ℹ️ Enable Home Assistant Feature above to configure these settings.';
+      
+      // Insert after the enable checkbox
+      const enableCheckboxContainer = haEnabledCheckbox?.closest('.mb-6');
+      if (enableCheckboxContainer) {
+        enableCheckboxContainer.insertAdjacentElement('afterend', hintElement);
+      }
+    } else {
+      hintElement.style.display = 'block';
+    }
+  } else {
+    if (hintElement) {
+      hintElement.style.display = 'none';
+    }
   }
 }
 
@@ -2729,9 +3037,13 @@ function loadHAConfig() {
   const defaultConfig = configData.features?.homeAssistant || {};
   
   // Load enabled checkbox
+  const isEnabled = haConfig.enabled !== false; // Default to true if not set
   if (haEnabledCheckbox) {
-    haEnabledCheckbox.checked = haConfig.enabled !== false; // Default to true if not set
+    haEnabledCheckbox.checked = isEnabled;
   }
+  
+  // Update inputs enabled state based on checkbox
+  updateHAInputsEnabledState(isEnabled);
   
   // Load baseUrl (from config or env, with config taking priority)
   if (haBaseUrlInput) {
@@ -2776,10 +3088,77 @@ function loadHASystemInstruction() {
 }
 
 /**
- * Save all HA configuration to localStorage
+ * Update the HA save status indicator
  */
-function saveHAConfig() {
+function updateHASaveIndicator(state: 'saving' | 'saved' | 'unsaved' | 'error' | 'idle') {
   if (!haConfigStatus) return;
+  
+  switch (state) {
+    case 'saving':
+      haConfigStatus.textContent = '💾 Saving...';
+      haConfigStatus.className = 'text-sm text-blue-600 mt-2 min-h-[1.2rem]';
+      break;
+    case 'saved':
+      haConfigStatus.textContent = '✅ Saved';
+      haConfigStatus.className = 'text-sm text-green-600 mt-2 min-h-[1.2rem]';
+      // Clear after 2 seconds
+      setTimeout(() => {
+        if (haConfigStatus && haConfigStatus.textContent === '✅ Saved') {
+          haConfigStatus.textContent = '';
+          haConfigStatus.className = 'text-sm text-gray-600 mt-2 min-h-[1.2rem]';
+        }
+      }, 2000);
+      break;
+    case 'unsaved':
+      haConfigStatus.textContent = '⚪ Unsaved changes';
+      haConfigStatus.className = 'text-sm text-gray-500 mt-2 min-h-[1.2rem]';
+      break;
+    case 'error':
+      haConfigStatus.textContent = '❌ Error saving';
+      haConfigStatus.className = 'text-sm text-red-600 mt-2 min-h-[1.2rem]';
+      break;
+    case 'idle':
+    default:
+      haConfigStatus.textContent = '';
+      haConfigStatus.className = 'text-sm text-gray-600 mt-2 min-h-[1.2rem]';
+      break;
+  }
+}
+
+/**
+ * Schedule HA auto-save with debouncing
+ * Different delays for textareas vs text inputs
+ */
+function scheduleHAAutoSave(input: HTMLElement) {
+  hasUnsavedHAChanges = true;
+  updateHASaveIndicator('unsaved');
+  
+  // Clear existing timeout
+  if (haSaveTimeout !== null) {
+    clearTimeout(haSaveTimeout);
+  }
+  
+  // Longer delay for textareas (multiline inputs), shorter for text inputs
+  const isTextarea = input.tagName === 'TEXTAREA';
+  const delay = isTextarea ? 2000 : 1000; // 2 seconds for textareas, 1 second for text inputs
+  
+  haSaveTimeout = window.setTimeout(() => {
+    saveHAConfig(true); // true = auto-save mode
+    hasUnsavedHAChanges = false;
+  }, delay);
+}
+
+/**
+ * Save all HA configuration to localStorage
+ * @param isAutoSave - If true, this is an auto-save (shows different message)
+ */
+function saveHAConfig(isAutoSave = false) {
+  if (!haConfigStatus) return;
+  
+  // Show saving indicator
+  if (isAutoSave) {
+    updateHASaveIndicator('saving');
+  }
   
   try {
     const enabled = haEnabledCheckbox?.checked ?? true;
@@ -2838,23 +3217,26 @@ function saveHAConfig() {
     config = loadConfig();
     
     // Show success message
-    haConfigStatus.textContent = '✅ HA configuration saved successfully';
-    haConfigStatus.className = 'text-sm text-green-600 mt-2 min-h-[1.2rem]';
+    if (isAutoSave) {
+      updateHASaveIndicator('saved');
+    } else {
+      haConfigStatus.textContent = '✅ HA configuration saved successfully';
+      haConfigStatus.className = 'text-sm text-green-600 mt-2 min-h-[1.2rem]';
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => {
+        if (haConfigStatus) {
+          haConfigStatus.textContent = '';
+          haConfigStatus.className = 'text-sm text-gray-600 mt-2 min-h-[1.2rem]';
+        }
+      }, 3000);
+    }
     
-    // Clear success message after 3 seconds
-    setTimeout(() => {
-      if (haConfigStatus) {
-        haConfigStatus.textContent = '';
-        haConfigStatus.className = 'text-sm text-gray-600 mt-2 min-h-[1.2rem]';
-      }
-    }, 3000);
+    hasUnsavedHAChanges = false;
     
   } catch (error) {
     console.error('Error saving HA configuration:', error);
-    if (haConfigStatus) {
-      haConfigStatus.textContent = '❌ Error saving configuration';
-      haConfigStatus.className = 'text-sm text-red-600 mt-2 min-h-[1.2rem]';
-    }
+    updateHASaveIndicator('error');
   }
 }
 
@@ -2895,6 +3277,16 @@ function resetHASystemInstruction() {
     // Reload all HA config fields to reflect the change
     loadHAConfig();
     
+    // Clear any pending auto-save
+    if (haSaveTimeout !== null) {
+      clearTimeout(haSaveTimeout);
+      haSaveTimeout = null;
+    }
+    
+    // Trigger auto-save to persist the reset
+    hasUnsavedHAChanges = false;
+    saveHAConfig(true);
+    
     // Show success message
     haConfigStatus.textContent = '✅ Reset to default successfully';
     haConfigStatus.className = 'text-sm text-green-600 mt-2 min-h-[1.2rem]';
@@ -2916,11 +3308,90 @@ function resetHASystemInstruction() {
   }
 }
 
+/**
+ * Set up auto-save listeners for HA configuration inputs
+ */
+function setupHAAutoSaveListeners() {
+  // Text inputs - debounced auto-save (1 second delay)
+  const textInputs = [
+    haBaseUrlInput,
+    haAccessTokenInput,
+    haTimeoutInput,
+    haWebSocketTimeoutInput,
+    haDomainsInput
+  ];
+  
+  textInputs.forEach(input => {
+    if (input) {
+      input.addEventListener('input', () => {
+        // Don't auto-save if input is disabled
+        if (!input.disabled) {
+          scheduleHAAutoSave(input);
+        }
+      });
+    }
+  });
+  
+  // Textareas - debounced auto-save (2 second delay) + save on blur
+  const textareas = [
+    haSystemInstruction
+  ];
+  
+  textareas.forEach(textarea => {
+    if (textarea) {
+      // Save on blur (when user leaves the field)
+      textarea.addEventListener('blur', () => {
+        // Don't auto-save if textarea is disabled
+        if (!textarea.disabled && hasUnsavedHAChanges) {
+          // Clear any pending timeout
+          if (haSaveTimeout !== null) {
+            clearTimeout(haSaveTimeout);
+            haSaveTimeout = null;
+          }
+          saveHAConfig(true);
+          hasUnsavedHAChanges = false;
+        }
+      });
+      
+      // Also debounce while typing (for long pauses)
+      textarea.addEventListener('input', () => {
+        // Don't auto-save if textarea is disabled
+        if (!textarea.disabled) {
+          scheduleHAAutoSave(textarea);
+        }
+      });
+    }
+  });
+  
+  // Checkboxes - save immediately on change (no debouncing)
+  // Note: haEnabledCheckbox is handled separately below
+}
+
 // Initialize HA configuration UI
 if (saveHaConfigBtn) {
   saveHaConfigBtn.addEventListener('click', (e) => {
     e.stopPropagation();
-    saveHAConfig();
+    // Clear any pending auto-save
+    if (haSaveTimeout !== null) {
+      clearTimeout(haSaveTimeout);
+      haSaveTimeout = null;
+    }
+    saveHAConfig(false); // false = manual save
+    hasUnsavedHAChanges = false;
+  });
+}
+
+// Set up auto-save listeners
+setupHAAutoSaveListeners();
+
+// Handle enable checkbox change - update inputs enabled state
+if (haEnabledCheckbox) {
+  haEnabledCheckbox.addEventListener('change', () => {
+    const isEnabled = haEnabledCheckbox.checked;
+    updateHAInputsEnabledState(isEnabled);
+    // Auto-save the enabled state change
+    saveHAConfig(true);
+    hasUnsavedHAChanges = false;
   });
 }
 
