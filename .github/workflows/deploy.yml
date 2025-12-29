@@ -39,10 +39,19 @@ jobs:
           NODE_ENV: 'production'
         run: npm run build
       
+      - name: Verify dist exists
+        run: |
+          pwd
+          ls -la
+          ls -la frontend/ || echo "frontend not found"
+          ls -la frontend/dist/ || echo "dist not found"
+          du -sh frontend/dist/ || echo "Cannot get size"
+      
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
+        timeout-minutes: 5
         with:
-          path: 'frontend/dist'
+          path: '${{ github.workspace }}/frontend/dist'
 
   deploy:
     environment:
