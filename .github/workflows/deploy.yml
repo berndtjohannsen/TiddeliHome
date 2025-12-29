@@ -3,7 +3,7 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches:
-      - master  # Default branch for this repository
+      - master  # Default branch for repository
   workflow_dispatch:
 
 permissions:
