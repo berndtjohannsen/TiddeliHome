@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite';
 import tailwindcss from '@tailwindcss/vite';
+import mkcert from 'vite-plugin-mkcert';
 import { readFileSync, writeFileSync } from 'fs';
 import { resolve } from 'path';
 import { networkInterfaces } from 'os';
@@ -67,6 +68,8 @@ export default defineConfig({
   base: getBasePath(),
 
   plugins: [
+    // Only use mkcert in development (not in CI/production)
+    ...(process.env.NODE_ENV !== 'production' && !isCI ? [mkcert()] : []),
     tailwindcss(),
 
     // Inject version into service worker (safe in CI)
@@ -94,10 +97,12 @@ export default defineConfig({
   server: {
     port: 3000,
     host: '0.0.0.0',
-    https: false, // mkcert removed in CI-safe version
+    // Enable HTTPS in development (using mkcert), disable in CI/production
+    https: process.env.NODE_ENV !== 'production' && !isCI,
     hmr: {
       host: localIP,
-      protocol: 'ws',
+      // Use secure WebSocket when HTTPS is enabled
+      protocol: process.env.NODE_ENV !== 'production' && !isCI ? 'wss' : 'ws',
       clientPort: 3000
     }
   },

@@ -2271,6 +2271,30 @@ async function setupServiceWorker() {
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', async () => {
+    // Skip service worker registration in development mode (Vite dev server)
+    // Detect dev mode by checking if we're on localhost or if Vite dev server is active
+    const isDevMode = 
+      window.location.hostname === 'localhost' || 
+      window.location.hostname === '127.0.0.1' ||
+      window.location.hostname.match(/^192\.168\.\d+\.\d+$/) || // Local network IP
+      window.location.port === '3000' || // Vite default port
+      import.meta.env.DEV; // Vite's dev mode flag
+    
+    if (isDevMode) {
+      console.log('🔧 Development mode detected - skipping service worker registration');
+      // Unregister any existing service workers in dev mode
+      try {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        for (const reg of regs) {
+          await reg.unregister();
+          console.log('Unregistered service worker for dev mode');
+        }
+      } catch (e) {
+        console.warn('Could not unregister service workers:', e);
+      }
+      return;
+    }
+    
     // Prevent multiple simultaneous registration attempts
     if (isRegistering) {
       console.log('⚠️ Service worker registration already in progress, skipping...');

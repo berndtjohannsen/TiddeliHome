@@ -4,7 +4,7 @@
 // - Always fetch API calls from network (no caching for real-time data)
 
 const CACHE_NAME = 'tiddelihome-v1';
-const VERSION = '0.1.242'; // This will be replaced at build time
+const VERSION = '0.1.243'; // This will be replaced at build time
 
 // Get base path from service worker's own location
 // If service worker is at /TiddeliHome/service-worker.js, base path is /TiddeliHome/
@@ -92,9 +92,22 @@ self.addEventListener('fetch', (event) => {
     return;
   }
   
+  // Skip Vite dev server resources (development only)
+  // These should never be cached by the service worker
+  const pathname = url.pathname;
+  const isViteDevResource = 
+    pathname.startsWith('/@') || // Vite special paths like /@vite/client
+    pathname.startsWith('/src/') || // Source files in dev mode
+    pathname.startsWith('/node_modules/'); // Node modules in dev mode
+  
+  if (isViteDevResource) {
+    // Bypass service worker for Vite dev resources - don't intercept at all
+    // Return without calling event.respondWith() to let browser handle it natively
+    return;
+  }
+  
   // Check if this is a static asset that should be cached
   // Note: url.pathname already includes base path (e.g., "/TiddeliHome/index.html")
-  const pathname = url.pathname;
   const isStaticAsset = 
     // JavaScript files
     pathname.endsWith('.js') ||
