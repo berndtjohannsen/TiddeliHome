@@ -64,6 +64,7 @@ function getBasePath() {
   return '/';
 }
 
+
 export default defineConfig({
   base: getBasePath(),
 
@@ -77,6 +78,51 @@ export default defineConfig({
       name: 'inject-version',
       buildStart() {
         updateServiceWorkerVersion();
+      }
+    },
+
+    // Update manifest.json with correct base path for GitHub Pages (in output bundle only)
+    {
+      name: 'update-manifest-base-path',
+      generateBundle(options, bundle) {
+        // Only run for GitHub Pages builds
+        if (process.env.GITHUB_PAGES !== 'true') return;
+        
+        const basePath = getBasePath();
+        if (basePath === '/') return; // No transformation needed
+        
+        // Find manifest.json in the bundle
+        const manifestKey = Object.keys(bundle).find(key => key === 'manifest.json');
+        if (!manifestKey) return;
+        
+        const manifestAsset = bundle[manifestKey];
+        if (manifestAsset.type !== 'asset') return;
+        
+        try {
+          const manifest = JSON.parse(manifestAsset.source as string);
+          
+          // Update icon paths with base path
+          if (manifest.icons) {
+            manifest.icons = manifest.icons.map((icon: any) => ({
+              ...icon,
+              src: icon.src.startsWith('/') ? basePath + icon.src.slice(1) : icon.src
+            }));
+          }
+          
+          // Update start_url and scope with base path
+          if (manifest.start_url && manifest.start_url.startsWith('/')) {
+            manifest.start_url = basePath + manifest.start_url.slice(1);
+          }
+          if (manifest.scope && manifest.scope.startsWith('/')) {
+            manifest.scope = basePath + manifest.scope.slice(1);
+          }
+          
+          // Update the bundle asset (output only, source file unchanged)
+          manifestAsset.source = JSON.stringify(manifest, null, 2);
+          console.log('Manifest updated with base path in output:', basePath);
+        } catch (err) {
+          console.error('Failed to update manifest base path:', err);
+        }
       }
     },
 

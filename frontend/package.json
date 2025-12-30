@@ -1,6 +1,6 @@
 {
   "name": "tiddelihome-frontend",
-  "version": "0.1.243",
+  "version": "0.1.244",
   "type": "module",
   "scripts": {
     "dev": "vite",
