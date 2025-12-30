@@ -81,32 +81,47 @@ export default defineConfig({
       }
     },
 
-    // Update manifest.json with correct base path for GitHub Pages (in output bundle only)
+    // Update manifest.json with correct base path for GitHub Pages (in output only)
     {
       name: 'update-manifest-base-path',
-      generateBundle(options, bundle) {
+      closeBundle() {
         // Only run for GitHub Pages builds
-        if (process.env.GITHUB_PAGES !== 'true') return;
+        if (process.env.GITHUB_PAGES !== 'true') {
+          console.log('Skipping manifest transformation (not GitHub Pages build)');
+          return;
+        }
         
         const basePath = getBasePath();
-        if (basePath === '/') return; // No transformation needed
-        
-        // Find manifest.json in the bundle
-        const manifestKey = Object.keys(bundle).find(key => key === 'manifest.json');
-        if (!manifestKey) return;
-        
-        const manifestAsset = bundle[manifestKey];
-        if (manifestAsset.type !== 'asset') return;
+        console.log('Manifest transformation - basePath:', basePath);
+        if (basePath === '/') {
+          console.log('No transformation needed (base path is root)');
+          return;
+        }
         
         try {
-          const manifest = JSON.parse(manifestAsset.source as string);
+          // Read the manifest from the output directory (after build)
+          const manifestPath = resolve(__dirname, 'dist/manifest.json');
+          if (!readFileSync(manifestPath, 'utf-8')) {
+            console.warn('Manifest file not found in dist, skipping transformation');
+            return;
+          }
+          
+          const manifest = JSON.parse(readFileSync(manifestPath, 'utf-8'));
+          console.log('Original manifest icons:', manifest.icons?.map((i: any) => i.src));
           
           // Update icon paths with base path
           if (manifest.icons) {
-            manifest.icons = manifest.icons.map((icon: any) => ({
-              ...icon,
-              src: icon.src.startsWith('/') ? basePath + icon.src.slice(1) : icon.src
-            }));
+            manifest.icons = manifest.icons.map((icon: any) => {
+              const originalSrc = icon.src;
+              const newSrc = icon.src.startsWith('/') 
+                ? basePath + icon.src.slice(1) 
+                : icon.src;
+              console.log(`Icon path: ${originalSrc} -> ${newSrc}`);
+              return {
+                ...icon,
+                src: newSrc
+              };
+            });
           }
           
           // Update start_url and scope with base path
@@ -117,11 +132,12 @@ export default defineConfig({
             manifest.scope = basePath + manifest.scope.slice(1);
           }
           
-          // Update the bundle asset (output only, source file unchanged)
-          manifestAsset.source = JSON.stringify(manifest, null, 2);
-          console.log('Manifest updated with base path in output:', basePath);
+          // Write back to output directory (source file unchanged)
+          writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
+          console.log('✅ Manifest updated with base path in output:', basePath);
+          console.log('Updated manifest icons:', manifest.icons?.map((i: any) => i.src));
         } catch (err) {
-          console.error('Failed to update manifest base path:', err);
+          console.error('❌ Failed to update manifest base path:', err);
         }
       }
     },
