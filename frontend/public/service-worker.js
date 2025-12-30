@@ -4,7 +4,7 @@
 // - Always fetch API calls from network (no caching for real-time data)
 
 const CACHE_NAME = 'tiddelihome-v1';
-const VERSION = '0.1.246'; // This will be replaced at build time
+const VERSION = '0.1.247'; // This will be replaced at build time
 
 // Get base path from service worker's own location
 // If service worker is at /TiddeliHome/service-worker.js, base path is /TiddeliHome/
