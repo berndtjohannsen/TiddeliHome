@@ -1,100 +1,66 @@
-// Service worker for PWA
-// Implements standard PWA caching strategy:
-// - Cache static assets (JS, CSS, images, icons) for performance
-// - Always fetch API calls from network (no caching for real-time data)
-
+// Service worker for TiddeliHome
+// Strategy: Stale-While-Revalidate for UI assets, Network-Only for APIs
 const CACHE_NAME = 'tiddelihome-v1';
-const VERSION = '0.1.247'; // This will be replaced at build time
+const VERSION = '0.1.268'; // This will be replaced at build time
 
-// Get base path from service worker's own location
-// If service worker is at /TiddeliHome/service-worker.js, base path is /TiddeliHome/
-// If service worker is at /service-worker.js, base path is /
+// Automatically detect base path (e.g., /TiddeliHome/ or /)
 const getBasePath = () => {
-  const swPath = self.location.pathname; // e.g., "/TiddeliHome/service-worker.js" or "/service-worker.js"
-  const basePath = swPath.substring(0, swPath.lastIndexOf('/') + 1); // e.g., "/TiddeliHome/" or "/"
-  return basePath;
+  const swPath = self.location.pathname;
+  return swPath.substring(0, swPath.lastIndexOf('/') + 1);
 };
-
 const BASE_PATH = getBasePath();
 
-// Static assets to cache (files that don't change often)
-// Paths are relative to service worker scope (handled by Vite base path)
+// Core assets required for the app to function and be installable
 const STATIC_ASSETS = [
-  BASE_PATH, // Root (e.g., "/TiddeliHome/" or "/")
+  BASE_PATH,
   BASE_PATH + 'index.html',
   BASE_PATH + 'manifest.json',
-  BASE_PATH + 'audio-processor.js',
-  // JS, CSS, images will be matched by extension
+  BASE_PATH + 'audio-processor.js'
 ];
 
-// Install event - required for PWA
+// Install: Create cache and pre-cache core assets
 self.addEventListener('install', (event) => {
-  console.log('Service Worker: Installing...', VERSION);
-  
-  // Check if this is a first install or an update
-  // On first install (no active service worker), activate immediately for PWA installability
-  // On updates (active service worker exists), wait for user confirmation
-  if (self.registration && self.registration.active) {
-    // There's an active service worker - this is an update
-    // Don't skip waiting - wait for SKIP_WAITING message from user
-    console.log('Update detected - waiting for user confirmation (SKIP_WAITING message)');
-    // Don't call skipWaiting() - the service worker will wait in "installed" state
-  } else {
-    // No active service worker - this is a first install
-    // Activate immediately so service worker controls the page (required for PWA installability)
-    console.log('First install detected - activating immediately for PWA installability');
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => {
+      console.log('SW: Pre-caching static assets');
+      return cache.addAll(STATIC_ASSETS).catch((err) => {
+        // If pre-caching fails (e.g., in dev mode), continue anyway
+        console.warn('SW: Pre-cache failed (this is OK in dev mode):', err);
+      });
+    })
+  );
+  // Only skip waiting on first install (when there's no active service worker)
+  // For updates, wait for user confirmation via SKIP_WAITING message
+  if (!self.controller) {
+    // First install - activate immediately for PWA installability
     self.skipWaiting();
   }
+  // Otherwise, wait for user to click "Update Now" which sends SKIP_WAITING message
 });
 
-// Activate event
+// Activate: Clean up old versions and take control immediately
 self.addEventListener('activate', (event) => {
-  console.log('Service Worker: Activating...', VERSION);
-  // Claim clients immediately - this is required for PWA installability
-  // The beforeinstallprompt event requires the service worker to be controlling the page
   event.waitUntil(
-    // Clean up old caches
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
-          // Delete old cache versions
           if (cacheName !== CACHE_NAME) {
-            console.log('Deleting old cache:', cacheName);
+            console.log('SW: Deleting old cache', cacheName);
             return caches.delete(cacheName);
           }
         })
       );
-    }).then(() => {
-      // Claim clients
-      return clients.claim().then(() => {
-        // Notify all clients about the new version
-        return clients.matchAll().then((clientList) => {
-          clientList.forEach((client) => {
-            client.postMessage({
-              type: 'SW_VERSION',
-              version: VERSION
-            });
-          });
-        });
-      });
-    })
+    }).then(() => self.clients.claim()) // Required for immediate PWA installability
   );
 });
 
-// Fetch event - implement standard PWA caching strategy
+// Fetch: The logic that minimizes server hits while satisfying Google
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
-  const request = event.request;
-  
-  // Skip non-GET requests (POST, PUT, etc.) - always fetch from network
-  if (request.method !== 'GET') {
-    event.respondWith(fetch(request));
-    return;
-  }
+  const pathname = url.pathname;
   
   // Skip Vite dev server resources (development only)
   // These should never be cached by the service worker
-  const pathname = url.pathname;
   const isViteDevResource = 
     pathname.startsWith('/@') || // Vite special paths like /@vite/client
     pathname.startsWith('/src/') || // Source files in dev mode
@@ -102,111 +68,49 @@ self.addEventListener('fetch', (event) => {
   
   if (isViteDevResource) {
     // Bypass service worker for Vite dev resources - don't intercept at all
-    // Return without calling event.respondWith() to let browser handle it natively
     return;
   }
   
-  // Check if this is a static asset that should be cached
-  // Note: url.pathname already includes base path (e.g., "/TiddeliHome/index.html")
-  const isStaticAsset = 
-    // JavaScript files
-    pathname.endsWith('.js') ||
-    // CSS files
-    pathname.endsWith('.css') ||
-    // Images
-    pathname.match(/\.(png|jpg|jpeg|gif|svg|webp|ico)$/i) ||
-    // Icons directory
-    pathname.includes('/icons/') ||
-    // Manifest (with or without base path)
-    pathname === '/manifest.json' || pathname === BASE_PATH + 'manifest.json' ||
-    // HTML (main page) - check for base path root or index.html
-    pathname === BASE_PATH || pathname === BASE_PATH + 'index.html' || pathname === '/' || pathname === '/index.html' ||
-    // Audio processor (with or without base path)
-    pathname === '/audio-processor.js' || pathname === BASE_PATH + 'audio-processor.js';
-  
-  // Check if this is an API call that should NOT be cached
-  const isAPICall = 
-    // External API calls (Gemini, Home Assistant)
-    url.origin !== self.location.origin ||
-    // API endpoints (if you add any in the future)
-    url.pathname.startsWith('/api/') ||
-    // WebSocket connections (not handled by fetch, but good to exclude)
-    url.protocol === 'ws:' || url.protocol === 'wss:';
-  
-  if (isStaticAsset && !isAPICall) {
-    // Cache-first strategy for static assets
-    // This improves performance and reduces server load
-    event.respondWith(
-      caches.open(CACHE_NAME).then(async (cache) => {
-        // Try cache first
-        const cachedResponse = await cache.match(request);
-        if (cachedResponse) {
-          // Return from cache, but also update cache in background (stale-while-revalidate)
-          // This ensures cache stays fresh without blocking the response
-          fetch(request).then((networkResponse) => {
-            if (networkResponse.ok) {
-              cache.put(request, networkResponse.clone());
-            }
-          }).catch(() => {
-            // Ignore network errors when updating cache in background
-          });
-          return cachedResponse;
-        }
-        
-        // Not in cache - fetch from network
-        try {
-          const networkResponse = await fetch(request);
-          // Cache successful responses
+  // 1. Skip non-GET and API/External requests (Network Only)
+  if (event.request.method !== 'GET' || url.origin !== self.location.origin || url.pathname.includes('/api/')) {
+    event.respondWith(fetch(event.request));
+    return;
+  }
+
+  // 2. Stale-While-Revalidate for UI/Static assets (including navigation, manifest, icons)
+  // This is key: Chrome needs to see the service worker handle these requests properly
+  event.respondWith(
+    caches.open(CACHE_NAME).then((cache) => {
+      return cache.match(event.request).then((cachedResponse) => {
+        const fetchedResponse = fetch(event.request).then((networkResponse) => {
           if (networkResponse.ok) {
-            cache.put(request, networkResponse.clone());
+            cache.put(event.request, networkResponse.clone()); // Update cache in background
           }
           return networkResponse;
-        } catch (error) {
-          console.warn('Service Worker: Failed to fetch static asset', url.pathname, error);
-          // Return a basic error response instead of throwing
-          return new Response('Network error', { 
-            status: 408,
-            statusText: 'Request Timeout'
-          });
-        }
-      })
-    );
-  } else {
-    // Network-only strategy for API calls and dynamic content
-    // Always fetch from network - no caching for real-time data
-    event.respondWith(
-      fetch(request).catch((error) => {
-        console.warn('Service Worker: Fetch failed for', url.pathname, error);
-        // Re-throw to let the browser handle it naturally
-        throw error;
-      })
-    );
-  }
+        }).catch((error) => {
+          // If network fails and we have cache, return cache
+          if (cachedResponse) {
+            return cachedResponse;
+          }
+          // Otherwise let the error propagate
+          throw error;
+        });
+
+        // Return cached version if exists, otherwise wait for network
+        return cachedResponse || fetchedResponse;
+      });
+    })
+  );
 });
 
-// Listen for messages from clients
+// Listen for SKIP_WAITING to handle updates gracefully
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
-    console.log('Service Worker: Received SKIP_WAITING, activating now');
-    self.skipWaiting().then(() => {
-      // After skipping waiting, claim clients
-      return clients.claim();
-    });
+    self.skipWaiting().then(() => clients.claim());
   } else if (event.data && event.data.type === 'GET_VERSION') {
-    // Send version back to client
     event.ports[0]?.postMessage({
       type: 'SW_VERSION',
       version: VERSION
     });
-    // Also try to send via clients if ports not available
-    clients.matchAll().then((clientList) => {
-      clientList.forEach((client) => {
-        client.postMessage({
-          type: 'SW_VERSION',
-          version: VERSION
-        });
-      });
-    });
   }
 });
-

@@ -79,6 +79,7 @@ const volumeMuteButton = document.getElementById('volume-mute-button') as HTMLBu
 const settingsIcon = document.getElementById('settings-icon') as HTMLButtonElement | null;
 const installIcon = document.getElementById('install-icon') as HTMLButtonElement | null;
 const appVersion = document.getElementById('app-version') as HTMLDivElement | null;
+const updateIndicator = document.getElementById('update-indicator') as HTMLButtonElement | null;
 const updatePrompt = document.getElementById('update-prompt') as HTMLDivElement | null;
 const updateMessage = document.getElementById('update-message') as HTMLParagraphElement | null;
 const updateNowBtn = document.getElementById('update-now-btn') as HTMLButtonElement | null;
@@ -1176,16 +1177,20 @@ micButton.addEventListener('click', toggleConnection);
 muteButton.addEventListener('click', toggleMute);
 updateUI(false, 'Ready - Click to start call');
 
-// Display app version - will be updated when service worker version is known
-// Initially show APP_VERSION, but will be replaced with actual service worker version
+// Display app version - always show APP_VERSION until user explicitly updates
+// This ensures the version doesn't change automatically
+// 
+// NOTE: In dev mode, APP_VERSION updates immediately when package.json changes (Vite HMR).
+// The update mechanism (indicator, user confirmation) only works in production/preview builds.
 if (appVersion) {
   appVersion.textContent = `v${APP_VERSION}`;
 }
 
-// Function to update displayed version
+// Function to update displayed version (only called after user confirms update)
 function updateDisplayedVersion(version: string | null) {
   if (appVersion && version) {
     appVersion.textContent = `v${version}`;
+    console.log('Displayed version updated to:', version);
   }
 }
 
@@ -1453,7 +1458,12 @@ if (installIcon) {
         message += 'The app appears to meet PWA requirements, but the browser hasn\'t provided an install prompt.\n\n';
         message += 'This usually means:\n';
         message += '• You previously dismissed the install prompt\n';
-        message += '• The browser needs more time to evaluate\n\n';
+        message += '• The browser needs more time to evaluate\n';
+        message += '• Service worker may not be fully activated yet\n\n';
+        message += '💡 Try:\n';
+        message += '• Wait a few seconds and click Install again\n';
+        message += '• Reload the page (service worker may activate)\n';
+        message += '• Check console: run checkPWAInstallability() for details\n\n';
       }
       
       message += 'To install:\n';
@@ -1694,12 +1704,13 @@ async function registerServiceWorker(): Promise<ServiceWorkerRegistration> {
 }
 
 // Helper function: Reset update flags
-function resetUpdateFlags(): void {
+  function resetUpdateFlags(): void {
   justUpdated = true;
   isCheckingForUpdate = false;
   updatePromptShown = false;
   activeSWVersionBeforeUpdate = null;
   hideUpdatePrompt();
+  hideUpdateIndicator();
 }
 
 // Function to set up service worker after successful registration
@@ -1862,10 +1873,11 @@ async function setupServiceWorker() {
               if (!activeSWVersionBeforeUpdate) {
                 activeSWVersionBeforeUpdate = currentSWVersion;
               }
-              updateDisplayedVersion(currentSWVersion);
+              // DON'T update displayed version automatically - only show indicator
+              // Version display will only update when user confirms update
               waitingWorker = registration?.waiting || null;
               isCheckingForUpdate = false;
-              showUpdatePrompt();
+              showUpdateIndicator();
             }
           };
           registration.active?.postMessage({ type: 'GET_VERSION' }, [messageChannel.port2]);
@@ -1873,7 +1885,7 @@ async function setupServiceWorker() {
         }
         waitingWorker = registration.waiting;
         isCheckingForUpdate = false;
-        showUpdatePrompt();
+        showUpdateIndicator();
         return;
       }
       
@@ -1914,7 +1926,7 @@ async function setupServiceWorker() {
             console.log('Found waiting worker after forced fetch');
             waitingWorker = registration.waiting;
             isCheckingForUpdate = false;
-            showUpdatePrompt();
+            showUpdateIndicator();
           } else if (registration?.installing) {
             console.log('Service worker is installing after forced fetch - will be handled by updatefound event');
             isCheckingForUpdate = false;
@@ -1955,10 +1967,8 @@ async function setupServiceWorker() {
           console.log('Service Worker version (from active via MessageChannel):', currentSWVersion);
           console.log('App version:', APP_VERSION);
           
-          // Update displayed version to match active service worker
-          updateDisplayedVersion(currentSWVersion);
-          
-          // Compare versions
+          // Compare versions - but DON'T update displayed version automatically
+          // Only update display when user explicitly updates
           if (currentSWVersion && currentSWVersion !== APP_VERSION) {
             console.log('⚠️ Version mismatch detected! SW:', currentSWVersion, 'App:', APP_VERSION);
             // Only check for update if we haven't just updated
@@ -1969,6 +1979,8 @@ async function setupServiceWorker() {
             }
           } else if (currentSWVersion === APP_VERSION) {
             console.log('✅ Versions match:', currentSWVersion);
+            // Versions match - user has updated, safe to update display
+            updateDisplayedVersion(currentSWVersion);
             // Clear the justUpdated flag once versions match
             if (justUpdated) {
               sessionStorage.removeItem('justUpdated');
@@ -1977,6 +1989,8 @@ async function setupServiceWorker() {
               console.log('Update confirmed - versions match, cleared justUpdated flag');
             }
           }
+          // If versions don't match, DON'T update display - keep showing APP_VERSION
+          // The indicator will show that an update is available
         } else {
           console.log('⚠️ Version received but waiting worker exists - ignoring to prevent premature update');
         }
@@ -2010,10 +2024,8 @@ async function setupServiceWorker() {
           currentSWVersion = receivedVersion;
           console.log('Service Worker version received (from active):', currentSWVersion);
           
-          // Update displayed version to match active service worker
-          updateDisplayedVersion(currentSWVersion);
-          
           // Check for version mismatch and show prompt if needed
+          // DON'T update displayed version automatically - only update when versions match
           if (currentSWVersion && currentSWVersion !== APP_VERSION) {
             console.log('⚠️ Version mismatch detected! SW:', currentSWVersion, 'App:', APP_VERSION);
             
@@ -2037,6 +2049,8 @@ async function setupServiceWorker() {
               console.log('Time since update:', timeSinceUpdate, 'ms');
             }
           } else if (currentSWVersion === APP_VERSION) {
+            // Versions match - user has updated, safe to update display
+            updateDisplayedVersion(currentSWVersion);
             console.log('✅ Versions match:', currentSWVersion);
             // Clear the justUpdated flag once versions match
             if (justUpdated) {
@@ -2090,11 +2104,11 @@ async function setupServiceWorker() {
                 console.log('Waiting for service worker version from updatefound event...');
                 setTimeout(() => {
                   if (!updatePromptShown) {
-                    showUpdatePrompt();
+                    showUpdateIndicator();
                   }
                 }, 500);
               } else {
-                showUpdatePrompt();
+                showUpdateIndicator();
               }
             } else {
               console.log('Skipping prompt - just updated or already shown');
@@ -2156,10 +2170,10 @@ async function setupServiceWorker() {
       console.log('Stored active worker version before update:', activeSWVersionBeforeUpdate);
     }
     waitingWorker = registration.waiting;
-    isCheckingForUpdate = false; // Clear flag when showing prompt
-    // Only show prompt if we haven't just updated
+    isCheckingForUpdate = false; // Clear flag when showing indicator
+    // Only show indicator if we haven't just updated
     if (!justUpdated) {
-      showUpdatePrompt();
+      showUpdateIndicator();
     } else {
       console.log('Skipping prompt - just updated (waiting worker check on load)');
     }
@@ -2218,24 +2232,23 @@ async function setupServiceWorker() {
   }
   
   // Listen for controller change (update activated)
+  // IMPORTANT: Only reload if user explicitly clicked "Update Now"
+  // Never auto-reload - user must always confirm updates
   navigator.serviceWorker.addEventListener('controllerchange', () => {
     console.log('New service worker activated');
     
-    // Only auto-reload if app is installed (standalone mode)
-    // When not installed, user is just browsing - don't force reload
-    if (isStandalone) {
-      console.log('App is installed - reloading page to use new service worker');
-      // Set flag to prevent update loop
-      sessionStorage.setItem('justUpdated', 'true');
-      sessionStorage.setItem('justUpdatedTimestamp', Date.now().toString());
-      resetUpdateFlags();
+    // Only reload if user explicitly requested update (justUpdated flag is set)
+    // This prevents automatic updates
+    if (justUpdated) {
+      console.log('User requested update - reloading page to use new service worker');
       // Small delay to ensure state is saved before reload
       setTimeout(() => {
         window.location.reload();
       }, 100);
     } else {
-      console.log('App not installed - service worker updated but not reloading (user is browsing)');
-      // Just update the flag, don't reload
+      console.log('Service worker activated but user did not request update - NOT reloading');
+      // Don't reload - user hasn't confirmed the update
+      // The indicator will show that an update is available
       resetUpdateFlags();
     }
   });
@@ -2270,30 +2283,12 @@ async function setupServiceWorker() {
 }
 
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', async () => {
-    // Skip service worker registration in development mode (Vite dev server)
-    // Detect dev mode by checking if we're on localhost or if Vite dev server is active
-    const isDevMode = 
-      window.location.hostname === 'localhost' || 
-      window.location.hostname === '127.0.0.1' ||
-      window.location.hostname.match(/^192\.168\.\d+\.\d+$/) || // Local network IP
-      window.location.port === '3000' || // Vite default port
-      import.meta.env.DEV; // Vite's dev mode flag
-    
-    if (isDevMode) {
-      console.log('🔧 Development mode detected - skipping service worker registration');
-      // Unregister any existing service workers in dev mode
-      try {
-        const regs = await navigator.serviceWorker.getRegistrations();
-        for (const reg of regs) {
-          await reg.unregister();
-          console.log('Unregistered service worker for dev mode');
-        }
-      } catch (e) {
-        console.warn('Could not unregister service workers:', e);
-      }
-      return;
-    }
+  // Register service worker immediately (don't wait for window.load)
+  // Chrome checks installability very early, so we need the service worker
+  // to be registered and active before Chrome's installability check
+  (async () => {
+    // Service worker registration is enabled in dev mode too
+    // The service worker itself handles skipping Vite dev resources (see service-worker.js)
     
     // Prevent multiple simultaneous registration attempts
     if (isRegistering) {
@@ -2466,11 +2461,38 @@ if ('serviceWorker' in navigator) {
         isRegistering = false;
       }
     }
-  });
+  })();
 }
 
 /**
- * Show update prompt to user
+ * Show update indicator (small icon next to version)
+ */
+function showUpdateIndicator() {
+  if (!updateIndicator) return;
+  
+  // Don't show if we just updated
+  if (justUpdated) {
+    console.log('Skipping update indicator - just updated');
+    return;
+  }
+  
+  // Show the indicator
+  updateIndicator.classList.remove('hidden', 'opacity-0');
+  updateIndicator.classList.add('opacity-100');
+  console.log('Update indicator shown');
+}
+
+/**
+ * Hide update indicator
+ */
+function hideUpdateIndicator() {
+  if (!updateIndicator) return;
+  updateIndicator.classList.add('hidden', 'opacity-0');
+  updateIndicator.classList.remove('opacity-100');
+}
+
+/**
+ * Show update prompt modal (when user clicks indicator)
  */
 function showUpdatePrompt() {
   if (!updatePrompt) return;
@@ -2515,6 +2537,13 @@ function hideUpdatePrompt() {
   updatePrompt.style.pointerEvents = 'none';
 }
 
+// Handle update indicator click - show the update prompt modal
+if (updateIndicator) {
+  updateIndicator.addEventListener('click', () => {
+    showUpdatePrompt();
+  });
+}
+
 // Handle update buttons
 if (updateNowBtn) {
   updateNowBtn.addEventListener('click', () => {
@@ -2550,6 +2579,7 @@ if (updateNowBtn) {
 if (updateLaterBtn) {
   updateLaterBtn.addEventListener('click', () => {
     hideUpdatePrompt();
+    // Keep the indicator visible so user knows update is still available
     // User can update later - we'll check again on next page load or periodic check
   });
 }

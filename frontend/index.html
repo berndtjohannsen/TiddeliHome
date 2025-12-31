@@ -21,7 +21,15 @@
 </head>
 <body class="phone-ui-container">
     <!-- Version display at top of screen -->
-    <div id="app-version" class="fixed top-4 left-1/2 -translate-x-1/2 text-xs text-white/40 font-normal z-10 pointer-events-none">v0.0.0</div>
+    <div class="fixed top-4 left-1/2 -translate-x-1/2 text-xs text-white/40 font-normal z-10 flex items-center gap-2">
+      <div id="app-version" class="pointer-events-none">v0.0.0</div>
+      <!-- Update indicator (only visible when update is available) -->
+      <button id="update-indicator" class="update-indicator hidden opacity-0 transition-opacity duration-300 cursor-pointer" aria-label="Update available" title="Update available - Click to update">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 fill-current text-blue-400">
+          <path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/>
+        </svg>
+      </button>
+    </div>
     
     <!-- Update prompt overlay -->
     <div id="update-prompt" class="fixed inset-0 bg-black/50 z-[2000] opacity-0 invisible transition-opacity duration-300 flex items-center justify-center">
