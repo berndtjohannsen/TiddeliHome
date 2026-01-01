@@ -877,8 +877,32 @@ async function connectToGemini() {
 
             // Setup Input Stream using AudioWorklet (replaces deprecated ScriptProcessorNode)
             try {
-              // Load AudioWorklet module
-              await appState.inputAudioContext.audioWorklet.addModule('/audio-processor.js');
+              // Load AudioWorklet module using Blob method (fixes Android/GitHub Pages issues)
+              // This approach ensures correct path resolution and MIME type handling
+              console.log('Setting up audio worklet...');
+              
+              // 1. Resolve the path relative to base path (handles GitHub Pages subfolders)
+              const basePath = import.meta.env.BASE_URL || '/';
+              const workletPath = basePath === '/' ? '/audio-processor.js' : `${basePath}audio-processor.js`;
+              
+              // 2. Fetch the code manually (utilizes Service Worker cache)
+              const response = await fetch(workletPath);
+              if (!response.ok) {
+                throw new Error(`Failed to fetch audio worklet: ${response.status} ${response.statusText}`);
+              }
+              const code = await response.text();
+              
+              // 3. Create a Blob with the explicit correct MIME type (critical for Android)
+              const blob = new Blob([code], { type: 'application/javascript' });
+              const blobUrl = URL.createObjectURL(blob);
+              
+              // 4. Load the worklet from the Blob URL
+              await appState.inputAudioContext.audioWorklet.addModule(blobUrl);
+              
+              // 5. Clean up the Blob URL to prevent memory leaks
+              URL.revokeObjectURL(blobUrl);
+              
+              console.log('Audio worklet loaded successfully');
               
               appState.sourceNode = appState.inputAudioContext.createMediaStreamSource(appState.stream);
               appState.processor = new AudioWorkletNode(appState.inputAudioContext, 'audio-processor');
@@ -944,10 +968,15 @@ async function connectToGemini() {
                 }
               }
             } catch (error) {
+              console.error('Failed to load audio worklet:', error);
               if (aiFunctionCalls) {
-              const logToUI = createUILogger(aiFunctionCalls);
-              logToUI(`   Error setting up audio: ${error instanceof Error ? error.message : String(error)}\n`, 'normal');
-            }
+                const logToUI = createUILogger(aiFunctionCalls);
+                const errorMsg = error instanceof Error ? error.message : String(error);
+                logToUI(`   Error setting up audio worklet: ${errorMsg}\n`, 'normal');
+                if (errorMsg.includes('fetch') || errorMsg.includes('404')) {
+                  logToUI(`   Check if audio-processor.js exists at: ${import.meta.env.BASE_URL || '/'}audio-processor.js\n`, 'debug');
+                }
+              }
               updateUI(false, 'Error setting up audio');
               disconnect();
             }

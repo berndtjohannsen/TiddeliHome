@@ -1,7 +1,7 @@
 // Service worker for TiddeliHome
 // Strategy: Stale-While-Revalidate for UI assets, Network-Only for APIs
 const CACHE_NAME = 'tiddelihome-v1';
-const VERSION = '0.1.268'; // This will be replaced at build time
+const VERSION = '0.1.269'; // This will be replaced at build time
 
 // Automatically detect base path (e.g., /TiddeliHome/ or /)
 const getBasePath = () => {
