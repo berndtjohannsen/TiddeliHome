@@ -1,5 +1,5 @@
 # TiddeliHome
-This is an app (Chrome PWA) that enables control of a Home Assistant (HA) using Gemini live audio (a google API still in beta). You can speak very freely (in any supported language) controlling switches and lights and get sensor information of your home. The overall idea is that the App pull HAs configuration (using HA websocket), does some filtering and send all that to AI. Using this information the AI can then control HA using REST commands - all in parallell with the audio dialog. There is no specific backend, just the web server that feeds the app ("web page")
+This is an app (Chrome PWA) that enables control of a Home Assistant (HA) using Gemini live audio (a google API still in beta). You can speak very freely (in any supported language) controlling switches and lights and get sensor information from your home. The overall idea is that the App pull HAs configuration (using HA websocket), does some filtering and then sends all to AI. Using this information the AI can then control HA using REST commands - all in parallell with the audio dialog. There is no specific backend, just the web server that feeds the App/web page.
 
 Questions like this are possible (in mulitple languages):
 - "Turn on/off specific lamps"
