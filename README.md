@@ -13,12 +13,16 @@ Questions like this are possible (in mulitple languages):
 You can use the App without HA asking general questions, but this will so far not bring much additional value to using the Gemini App.
 
 The app is here: [https://berndtjohannsen.github.io/TiddeliHome/](https://berndtjohannsen.github.io/TiddeliHome/)
-It can run, in the browser, as an windows app, as an App on android and (not tested) on IOS.
+ It runs in the browser, as a windows App, as an App on android and (not tested) on Iphone/IOS.
+
+ <img width="221" height="465" alt="image" src="https://github.com/user-attachments/assets/4393b53b-19a8-45b8-93d9-e920c930ba53" />
+
 
 
 ## TODOs 
 - Configuration upload
-- more heklp in particular related to configuration
+- Improve version management (e.g button to check for new version)
+- more on-line help in particular related to configuration
 - more finetuning of dialog (VAD, bargein in)
 - test on different phones android/IOS
 - New features/ideas:
@@ -27,6 +31,7 @@ It can run, in the browser, as an windows app, as an App on android and (not tes
 * Calendar access
 * Email access
 * More dynamic personal data (like current position)
+* AI driven help
 
 
 ## NOTE
