@@ -1,5 +1,5 @@
 # TiddeliHome
-This is an app (Chrome PWA) that enables control of a Home Assistant (HA) using Gemini live audio (a google API still in beta). You can speak very freely (in any supported language) controlling switches and lights and get sensor information from your home. The overall idea is that the App pull HAs configuration (using HA websocket), does some filtering and then sends all to AI. Using this information the AI can then control HA using REST commands - all in parallell with the audio dialog. There is no specific backend, just the web server that feeds the App/web page.
+This is an app (Chrome PWA) that enables control of a Home Assistant (HA) using Gemini live audio (a google API still in beta). You can speak very freely (in any supported language) controlling switches and lights and get sensor information from your home. The overall idea is that the App pulls HA configuration (using HA websocket), does some filtering and then sends all to AI. Using this information the AI can then control HA using REST commands - all in parallell with the audio dialog. There is no specific backend, just the web server that feeds the App/web page.
 
 Questions like this are possible (in mulitple languages):
 - "Turn on/off specific lamps"
@@ -13,7 +13,7 @@ Questions like this are possible (in mulitple languages):
 You can use the App without HA asking general questions, but this will so far not bring much additional value to using the Gemini App.
 
 The app is here: [https://berndtjohannsen.github.io/TiddeliHome/](https://berndtjohannsen.github.io/TiddeliHome/)
- It runs in the browser, as a windows App, as an App on android and (not tested) on Iphone/IOS.
+It runs in the browser, as a windows App, as an App on android and (not tested) on Iphone/IOS.
 
  <img width="221" height="465" alt="image" src="https://github.com/user-attachments/assets/4393b53b-19a8-45b8-93d9-e920c930ba53" />
 
@@ -30,7 +30,8 @@ New features/ideas:
 - "wakeword"
 - Calendar access
 - Email access
-- More dynamic personal data (like current position)
+- Notes access
+- More dynamic personal data (like current position). Allows questions such as where is the nearest restaurant
 - AI driven help
 
 
