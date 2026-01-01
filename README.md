@@ -25,20 +25,20 @@ The app is here: [https://berndtjohannsen.github.io/TiddeliHome/](https://berndt
 - more on-line help in particular related to configuration
 - more finetuning of dialog (VAD, bargein in)
 - test on different phones android/IOS
-- New features/ideas:
-* upload of private docs for AI to use in the dialog
-* "wakeword"
-* Calendar access
-* Email access
-* More dynamic personal data (like current position)
-* AI driven help
+New features/ideas:
+- upload of private docs for AI to use in the dialog
+- "wakeword"
+- Calendar access
+- Email access
+- More dynamic personal data (like current position)
+- AI driven help
 
 
-## NOTE
+## NOTES
 - This is work in progress, but it kind'a works - for me.
 - There is complexity with HA confuguration (CORS, certificate etc) I will document this more
 - The App will need a google API key for you to download (from google)
-- Stay tuned, I will evolve this to a decent first probably Q1 2026. No point in trying to contribute code yet.
+- Stay tuned, I will evolve this to a decent first release.  No point in trying to a shared code base yet. But, obviously, feel free to download and send me suggestions (info@tiddelipom.com)
 - Yoy will need long lived Home Assistant token
 - You may need to tune some HA configuration, for example providing names that suits a spoken dialog. But AI is pretty clever even without this.
 
@@ -51,7 +51,7 @@ The app is here: [https://berndtjohannsen.github.io/TiddeliHome/](https://berndt
 - These keys are all stored in the App, currently in clear text (though not exposed in the UI)
 - If you use my github-page as host, you will need to configure CORS in HA
 - You can of course host this on the same server as HA, which limites CORS complexity
-- The area is subject to TODO
+- This whole area around security is subject to TODO/Document
   
 ## Design
 There is tech info in the file design.md. But this is work in progress
