@@ -1,42 +1,60 @@
 # TiddeliHome
-This is an app (planned PWA) that enables control of a Home Assistant using Gemini live audio (using a google API still in beta). You can speak very freely (in any supported language) controlling switches and lights and get sensor information of your home. The overall idea is that the App pull HAs configuration (using websocket), does some filtering and send all that to AI. Using this information the AI can then control HA using REST commands - all in parallell with the audio dialog. There is no specific backend logic, just the web server that feeds the app ("web page")
+This is an app (Chrome PWA) that enables control of a Home Assistant (HA) using Gemini live audio (a google API still in beta). You can speak very freely (in any supported language) controlling switches and lights and get sensor information of your home. The overall idea is that the App pull HAs configuration (using HA websocket), does some filtering and send all that to AI. Using this information the AI can then control HA using REST commands - all in parallell with the audio dialog. There is no specific backend, just the web server that feeds the app ("web page")
 
 Questions like this are possible (in mulitple languages):
 - "Turn on/off specific lamps"
 - "Turn off all lamps in the kitchen and in the living room"
 - "What lamps are turned on in the kitchen"
-- "What is the temperature in the living room"
+- "What is the temperature in the living room and"
 - "What rooms do I have"
-- Turn on all window lamps and how tall is Barack Obama. Yes, as this app uses hosted Gemini AI, it can answer "any" question if so configured
+- "What is the weather tomorrow"
+- "Turn on all window lamps and how tall is Barack Obama". (Yes, as this app uses hosted Gemini AI, it can answer "any" question if so configured)
+
+You can use the App without HA asking general questions, but this will so far not bring much additional value to using the Gemini App.
+
+The app is here: [https://berndtjohannsen.github.io/TiddeliHome/](https://berndtjohannsen.github.io/TiddeliHome/)
+It can run, in the browser, as an windows app, as an App on android and (not tested) on IOS.
 
 
-Some todos:
-- more configuration help
-- more extensible (upload of docs for AI to use)
-- more finetuning of dialog 
-- figure how to run this hosted on Home Assistant (should be straight-foward)
+## TODOs 
+- Configuration upload
+- more heklp in particular related to configuration
+- more finetuning of dialog (VAD, bargein in)
+- test on different phones android/IOS
+- New features/ideas:
+* upload of private docs for AI to use in the dialog
+* "wakeword"
+* Calendar access
+* Email access
+* More dynamic personal data (like current position)
+
 
 ## NOTE
 - This is work in progress, but it kind'a works - for me.
 - There is complexity with HA confuguration (CORS, certificate etc) I will document this more
+- The App will need a google API key for you to download (from google)
 - Stay tuned, I will evolve this to a decent first probably Q1 2026. No point in trying to contribute code yet.
-- You will need your own Google API key, 
-- Yoy will need long lived HA token
-- You may need to tune some HA configuration, for example providing names that suits a spoken dialog. But AI is pretty clever (I will document this shortly)
+- Yoy will need long lived Home Assistant token
+- You may need to tune some HA configuration, for example providing names that suits a spoken dialog. But AI is pretty clever even without this.
 
 
 ## Security/integrity
-TBD 
-
+- These are the main things to manage/consider:
+- You will need your own google API key, I will document (or you can google) how to protect this best (at a minimum provide a cost limit). Likely you can get a decent service at a very low cost. Maybe even free.
+- You will need to provide an access token to Home Assistant
+- You will need to provision the access URL to Home Assistant
+- These keys are all stored in the App, currently in clear text (though not exposed in the UI)
+- If you use my github-page as host, you will need to configure CORS in HA
+- You can of course host this on the same server as HA, which limites CORS complexity
+- The area is subject to TODO
+  
 ## Design
-There is tech info in the file design.md. But this is very much work in progress
+There is tech info in the file design.md. But this is work in progress
 
 ## License
 TBD, but it will be free for any non-commercial use.
 
-
 ### Third-Party Components
-
 This project uses the following third-party libraries and tools:
 
 #### Runtime Dependencies
